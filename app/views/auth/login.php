@@ -30,6 +30,12 @@
                             </div>
 
                             <button type="submit" class="btn btn-danger w-100 py-2 fw-bold text-uppercase shadow-sm">লগইন করুন</button>
+
+                            <div class="mt-4 p-3 bg-light rounded-3 text-center border border-light-subtle">
+                                <p class="mb-1 text-muted small fw-semibold"><i class="fas fa-key text-danger me-1"></i> ডেমো লগইন তথ্য:</p>
+                                <div class="small text-secondary mb-1">ইমেইল: <code class="text-dark">admin@example.com</code></div>
+                                <div class="small text-secondary">পাসওয়ার্ড: <code class="text-dark">admin123</code></div>
+                            </div>
                             
                             <div class="text-center mt-4">
                                 <a href="<?= BASE_URL ?>/" class="text-muted small text-decoration-none"><i class="fas fa-arrow-left me-1"></i> ওয়েবসাইটে ফিরে যান</a>
