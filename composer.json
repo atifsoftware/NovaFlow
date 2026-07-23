@@ -32,11 +32,10 @@
     "autoload": {
         "psr-4": {
             "NovaFlow\\Core\\": "app/libraries/",
-            "App\\Controllers\\": "app/controllers/",
-            "App\\Middleware\\": "app/middleware/",
-            "App\\Models\\": "app/models/",
-            "App\\Services\\": "app/services/",
-            "App\\": "app/"
+            "App\\Controllers\\": "app/Controllers/",
+            "App\\Middleware\\": "app/Middleware/",
+            "App\\Models\\": "app/Models/",
+            "App\\Services\\": "app/Services/"
         }
     },
     "autoload-dev": {
