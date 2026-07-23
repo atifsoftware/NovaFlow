@@ -53,7 +53,7 @@
 ### Via Composer (Recommended)
 
 ```bash
-composer create-project novaflow/framework myproject
+composer create-project atifsoftware/novaflow myproject
 cd myproject
 ```
 
