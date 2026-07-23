@@ -1,0 +1,110 @@
+/* ============================================================
+   JahinMart — Theme Variables
+   Color variables are centralized here for easy theming
+   ============================================================ */
+
+:root {
+    /* Brand Colors - Vibrant Orange Theme */
+    --primary: #e65100;        /* Deep Orange */
+    --primary-light: #ff6d00;  /* Vivid Orange */
+    --primary-dark: #bf360c;   /* Burnt Orange Dark */
+    --secondary: #ffd600;      /* Golden Yellow Accent */
+    --secondary-light: #ffea00;
+    --accent: #fff3e0;         /* Soft Orange Tint */
+
+    /* Semantic Colors */
+    --success: #388e3c;
+    --danger: #d32f2f;
+    --danger-dark: #c62828;
+    --warning: #fbc02d;
+    --info: #1976d2;
+    --star: #ffb300;
+    --discount: #e53935;
+    --out-of-stock: #9e9e9e;
+
+    /* Neutral Colors - Warm Palette */
+    --text-dark: #1a1200;      /* Very Dark Warm */
+    --text-main: #333333;
+    --text-gray: #776655;      /* Muted Warm Gray */
+    --text-muted: #555555;
+    --text-light: #aaa099;
+    --text-silver: #998877;
+    --bg-light: #fffaf5;       /* Soft Warm White */
+    --bg-faint: #fff3e0;       /* Faint Warm Tint */
+    --bg-white: #ffffff;
+    --border: #fde0c0;
+    --border-light: #fff0d8;
+
+    /* Admin Panel Colors */
+    --admin-sidebar-bg: #1a0a00; /* Very Dark Orange-Black */
+    --admin-blue: #1565c0;
+    --admin-purple: #7b1fa2;
+    --admin-orange: #e65100;
+
+    /* Admin Sidebar specific */
+    --sidebar-bg: #1a0a00;
+    --sidebar-hover: rgba(230, 100, 0, 0.18);
+    --sidebar-active: rgba(230, 100, 0, 0.28);
+    --sidebar-text: rgba(255,255,255,.75);
+    --sidebar-icon: rgba(255,255,255,.45);
+    --topbar-h: 60px;
+    --sidebar-w: 255px;
+
+    /* Soft Status & Admin Colors */
+    --admin-green-soft: #e8f5e9;
+    --admin-blue-soft: #e3f2fd;
+    --admin-orange-soft: #fff3e0;
+    --admin-purple-soft: #f3e5f5;
+    --admin-red-soft: #ffebee;
+
+    /* Design Tokens - Orange Shadow */
+    --shadow-sm: 0 2px 12px rgba(230, 81, 0, .08);
+    --shadow-md: 0 8px 24px rgba(230, 81, 0, .12);
+    --shadow-lg: 0 12px 48px rgba(230, 81, 0, .15);
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Typography */
+    --font-bn: 'Hind Siliguri', sans-serif;
+    --font-en: 'Inter', sans-serif;
+}
+
+/* ============================================================
+   Overrides for Global Theme Mapping
+   Making sure all primary buttons across the site look alike
+   ============================================================ */
+
+.btn-primary, .bg-primary { 
+    background-color: var(--primary) !important; 
+    border-color: var(--primary) !important; 
+    color: #fff !important; 
+}
+.btn-primary:hover { 
+    background-color: var(--primary-dark) !important; 
+    border-color: var(--primary-dark) !important; 
+}
+.text-primary { color: var(--primary) !important; }
+.border-primary { border-color: var(--primary) !important; }
+
+/* Legacy 'success' used as brand color mapping */
+.btn-success, .bg-success { 
+    background-color: var(--primary) !important; 
+    border-color: var(--primary) !important; 
+    color: #fff !important; 
+}
+.btn-success:hover { 
+    background-color: var(--primary-dark) !important; 
+    border-color: var(--primary-dark) !important; 
+}
+.text-success { color: var(--primary) !important; }
+.border-success { border-color: var(--primary) !important; }
+.btn-outline-success {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+.btn-outline-success:hover {
+    background-color: var(--primary) !important;
+    color: #fff !important;
+}

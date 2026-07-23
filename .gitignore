@@ -1,0 +1,51 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+/logs/
+/storage/logs/*.log
+
+# Cache
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# Session
+/storage/sessions/*
+!/storage/sessions/.gitkeep
+
+# Uploads
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Build
+/public/build/
+/dist/
+
+# Test Coverage
+coverage/
+.phpunit.cache/
+
+# Temporary
+*.tmp
+*.temp
+
+# NovaFlow specific
+/storage/rate_limits/*
+!/storage/rate_limits/.gitkeep

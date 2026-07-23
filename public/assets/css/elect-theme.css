@@ -1,0 +1,137 @@
+/* ============================================================
+   JahinMart — Theme Variables
+   Color variables are centralized here for easy theming
+   ============================================================ */
+
+:root {
+    /* Brand Colors - Royal Blue & Gold Theme */
+    --primary: #1a237e;
+    /* Deep Navy Blue */
+    --primary-light: #283593;
+    /* Slightly Lighter Navy */
+    --primary-dark: #0d47a1;
+    /* Vivid Blue for Hover/Buttons */
+    --secondary: #ffd600;
+    /* Golden Yellow Accent */
+    --secondary-light: #ffff52;
+    --accent: #e8eaf6;
+    /* Soft Blue Tint */
+
+    /* Semantic Colors */
+    --success: #388e3c;
+    --danger: #d32f2f;
+    --danger-dark: #c62828;
+    --warning: #fbc02d;
+    --info: #1976d2;
+    --star: #ffb300;
+    --discount: #e53935;
+    --out-of-stock: #9e9e9e;
+
+    /* Neutral Colors - Slate/Blue Tint */
+    --text-dark: #0f172a;
+    /* Very Dark Slate */
+    --text-main: #334155;
+    --text-gray: #475569;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    --text-silver: #cbd5e1;
+    --bg-light: #f8f9fe;
+    /* Very Soft Blue-White */
+    --bg-faint: #f5f7ff;
+    /* Faint Blueish Tint */
+    --bg-white: #ffffff;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+
+    /* Admin Panel Colors */
+    --admin-sidebar-bg: #0b0f19;
+    /* Very Dark Navy */
+    --admin-blue: #1565c0;
+    --admin-purple: #7b1fa2;
+    --admin-orange: #e65100;
+
+    /* Admin Sidebar specific */
+    --sidebar-bg: #0b0f19;
+    --sidebar-hover: rgba(40, 53, 147, 0.4);
+    --sidebar-active: rgba(26, 35, 126, 0.6);
+    --sidebar-text: rgba(255, 255, 255, .75);
+    --sidebar-icon: rgba(255, 255, 255, .45);
+    --topbar-h: 60px;
+    --sidebar-w: 255px;
+
+    /* Soft Status & Admin Colors */
+    --admin-green-soft: #e8f5e9;
+    --admin-blue-soft: #e3f2fd;
+    --admin-orange-soft: #fff3e0;
+    --admin-purple-soft: #f3e5f5;
+    --admin-red-soft: #ffebee;
+
+    /* Design Tokens - Blue Shadow */
+    --shadow-sm: 0 2px 12px rgba(26, 35, 126, .08);
+    --shadow-md: 0 8px 24px rgba(26, 35, 126, .12);
+    --shadow-lg: 0 12px 48px rgba(26, 35, 126, .15);
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Typography */
+    --font-bn: 'Hind Siliguri', sans-serif;
+    --font-en: 'Inter', sans-serif;
+}
+
+/* ============================================================
+   Overrides for Global Theme Mapping
+   Making sure all primary buttons across the site look alike
+   ============================================================ */
+
+.btn-primary,
+.bg-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+.text-primary {
+    color: var(--primary) !important;
+}
+
+.border-primary {
+    border-color: var(--primary) !important;
+}
+
+/* Legacy 'success' used as brand color mapping */
+.btn-success,
+.bg-success {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+}
+
+.btn-success:hover {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+.text-success {
+    color: var(--primary) !important;
+}
+
+.border-success {
+    border-color: var(--primary) !important;
+}
+
+.btn-outline-success {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+.btn-outline-success:hover {
+    background-color: var(--primary) !important;
+    color: #fff !important;
+}
