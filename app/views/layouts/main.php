@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'NovaFlow PHP Framework' ?></title>
+    <title>@yield('title', 'NovaFlow PHP Framework')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
@@ -33,7 +33,7 @@
     </nav>
 
     <main>
-        <?= $content ?>
+        @yield('content')
     </main>
 
     <footer class="bg-dark text-white py-5 mt-5">
@@ -45,7 +45,7 @@
                 <a href="#" class="text-white opacity-50"><i class="fab fa-github"></i></a>
                 <a href="#" class="text-white opacity-50"><i class="fab fa-youtube"></i></a>
             </div>
-            <p class="small text-white-50 mb-0">&copy; <?= date('Y') ?> NovaFlow Framework. All rights reserved.</p>
+            <p class="small text-white-50 mb-0">&copy; {{ date('Y') }} NovaFlow Framework. All rights reserved.</p>
         </div>
     </footer>
 
