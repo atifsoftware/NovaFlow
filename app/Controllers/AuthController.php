@@ -41,16 +41,27 @@ class AuthController extends Controller
      */
     public function postLogin(): void
     {
-        $email    = $this->post('email');
-        $password = $this->post('password');
-        $remember = $this->post('remember') === 'on';
+        $data = [
+            'email' => $this->post('email'),
+            'password' => $this->post('password')
+        ];
 
-        if (empty($email) || empty($password)) {
-            Flash::error('সবগুলো ঘর পূরণ করুন।');
+        // Validation using Validator class
+        $validator = \NovaFlow\Core\Validator::make($data, [
+            'email' => 'required|email',
+            'password' => 'required|min:6'
+        ], [], [
+            'email' => 'ইমেইল',
+            'password' => 'পাসওয়ার্ড'
+        ]);
+
+        if (!$validator->validate()) {
+            Flash::error($validator->firstError(array_key_first($validator->errors())));
             $this->redirect('/login');
         }
 
-        $result = $this->authService->login($email, $password, $remember);
+        $remember = $this->post('remember') === 'on';
+        $result = $this->authService->login($data['email'], $data['password'], $remember);
 
         if ($result['success']) {
             Flash::success('লগইন সফল হয়েছে!');
@@ -89,11 +100,22 @@ class AuthController extends Controller
             'name' => $this->post('name'),
             'email' => $this->post('email'),
             'password' => $this->post('password'),
-            'confirm_password' => $this->post('confirm_password')
+            'password_confirmation' => $this->post('confirm_password')
         ];
 
-        if ($data['password'] !== $data['confirm_password']) {
-            Flash::error('পাসওয়ার্ড মিলছে না।');
+        // Validation using Validator class
+        $validator = \NovaFlow\Core\Validator::make($data, [
+            'name' => 'required|min:3|max:100',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:8|confirmed'
+        ], [], [
+            'name' => 'নাম',
+            'email' => 'ইমেইল',
+            'password' => 'পাসওয়ার্ড'
+        ]);
+
+        if (!$validator->validate()) {
+            Flash::error($validator->firstError(array_key_first($validator->errors())));
             $this->redirect('/register');
         }
 
