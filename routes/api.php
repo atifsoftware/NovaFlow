@@ -17,6 +17,10 @@ $router->group(['prefix' => 'api/v1'], function($router) {
         ]);
     });
     
+    // User Management API Routes
+    $router->get('/users', 'Api\V1\UserApiController@index');
+    $router->get('/users/{id}', 'Api\V1\UserApiController@show');
+    
     // Protected API Routes
     $router->group(['middleware' => 'api'], function($router) {
         $router->get('/profile', 'Api\V1\UserApiController@profile');
