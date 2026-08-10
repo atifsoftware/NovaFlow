@@ -3,69 +3,113 @@
 namespace NovaFlow\Core;
 
 /**
- * API Resource
- * Transform data for API responses
+ * API Resource Transformer
+ * Transform models into standardized API responses
+ * 
+ * Usage Example:
+ * class UserResource extends ApiResource {
+ *     public function toArray($request): array {
+ *         return [
+ *             'id' => $this->model->id,
+ *             'name' => $this->model->name,
+ *             'email' => $this->model->email,
+ *             'created_at' => $this->model->created_at,
+ *         ];
+ *     }
+ * }
+ * 
+ * // In Controller:
+ * return ApiResourceResponse::resource(new UserResource($user));
  */
-class ApiResource
+abstract class ApiResource
 {
-    protected $resource;
-    protected array $relations = [];
+    protected mixed $model;
+    protected array $includes = [];
 
-    public function __construct($resource)
+    public function __construct(mixed $model)
     {
-        $this->resource = $resource;
+        $this->model = $model;
     }
 
-    public static function make($resource): self
+    /**
+     * Transform the model into an array
+     * Must be implemented by child classes
+     */
+    abstract public function toArray($request): array;
+
+    /**
+     * Add relationships to include
+     */
+    public function includes(array $relations): self
     {
-        return new self($resource);
+        $this->includes = $relations;
+        return $this;
     }
 
-    public function transform(): array
+    /**
+     * Load relationships
+     */
+    protected function loadIncludes(): void
     {
-        if (is_null($this->resource)) {
-            return [];
+        if ($this->model instanceof Model && !empty($this->includes)) {
+            $this->model->loadMany($this->includes);
         }
-
-        if ($this->resource instanceof Model) {
-            return $this->transformModel($this->resource);
-        }
-
-        if (is_array($this->resource)) {
-            return array_map([$this, 'transformModel'], $this->resource);
-        }
-
-        return (array) $this->resource;
     }
 
-    protected function transformModel(Model $model): array
+    /**
+     * Transform single model
+     */
+    public function transform($request = null): array
     {
-        $data = $model->toArray();
-
-        foreach ($this->relations as $relation) {
-            if (isset($data[$relation])) {
-                continue;
-            }
-            $data[$relation] = $model->$relation ?? null;
-        }
+        $this->loadIncludes();
+        
+        $data = $this->toArray($request ?? request());
+        
+        // Add metadata
+        $data['meta'] = array_merge($data['meta'] ?? [], [
+            'transformed_at' => date('Y-m-d H:i:s'),
+            'resource_type' => static::class
+        ]);
 
         return $data;
     }
 
-    public function include(string ...$relations): self
+    /**
+     * Transform collection
+     */
+    public static function collection(array $models, $request = null): array
     {
-        $this->relations = array_merge($this->relations, $relations);
-        return $this;
+        $resources = [];
+        foreach ($models as $model) {
+            $instance = new static($model);
+            $resources[] = $instance->transform($request);
+        }
+
+        return [
+            'data' => $resources,
+            'meta' => [
+                'total' => count($models),
+                'count' => count($resources),
+                'transformed_at' => date('Y-m-d H:i:s'),
+                'resource_type' => static::class
+            ]
+        ];
     }
 
-    public function toJson(): string
+    /**
+     * Additional metadata
+     */
+    protected function meta(): array
     {
-        return json_encode($this->transform(), JSON_UNESCAPED_UNICODE);
+        return [];
     }
 
-    public static function collection($resources): self
+    /**
+     * Additional links
+     */
+    protected function links(): array
     {
-        return new self($resources);
+        return [];
     }
 }
 
@@ -74,27 +118,66 @@ class ApiResource
  */
 class ApiResourceResponse
 {
-    public static function resource($data): ApiResource
-    {
-        return new ApiResource($data);
-    }
-
-    public static function collection($data): ApiResource
-    {
-        return new ApiResource($data);
-    }
-
-    public static function paginate($data, int $total, int $page, int $perPage): array
+    /**
+     * Transform single resource
+     */
+    public static function resource(ApiResource $resource, $request = null): array
     {
         return [
-            'data' => (new ApiResource($data))->transform(),
+            'status' => 'success',
+            'data' => $resource->transform($request)
+        ];
+    }
+
+    /**
+     * Transform collection
+     */
+    public static function collection(ApiResource $resource, $request = null): array
+    {
+        $transformed = $resource->transform($request);
+        return [
+            'status' => 'success',
+            'data' => $transformed['data'] ?? $transformed,
+            'meta' => $transformed['meta'] ?? []
+        ];
+    }
+
+    /**
+     * Paginated response
+     */
+    public static function paginate(array $data, int $total, int $page, int $perPage, ?ApiResource $resource = null): array
+    {
+        $transformedData = $data;
+        
+        if ($resource && !empty($data)) {
+            $transformedData = $resource::collection($data)['data'];
+        }
+
+        return [
+            'status' => 'success',
+            'data' => $transformedData,
             'pagination' => [
                 'total' => $total,
                 'per_page' => $perPage,
                 'current_page' => $page,
                 'total_pages' => (int) ceil($total / $perPage),
                 'has_more' => $page * $perPage < $total
+            ],
+            'meta' => [
+                'transformed_at' => date('Y-m-d H:i:s')
             ]
+        ];
+    }
+
+    /**
+     * Error response
+     */
+    public static function error(string $message, int $code = 400): array
+    {
+        return [
+            'status' => 'error',
+            'message' => $message,
+            'code' => $code
         ];
     }
 }
