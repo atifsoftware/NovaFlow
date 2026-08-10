@@ -1,51 +1,74 @@
+```php
+# Compiled and build artifacts
+*.pyc
+*.o
+*.obj
+*.class
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
 # Dependencies
-/vendor/
-/node_modules/
-
-# Environment
+node_modules/
+vendor/
+composer.lock
 .env
-.env.backup
-.env.production
+.env.local
+.env.*
 
-# IDE
-.idea/
+# Build directories
+dist/
+build/
+target/
+coverage/
+htmlcov/
+*.log
+
+# IDE and editor files
 .vscode/
+.idea/
 *.swp
 *.swo
-*~
+*.tmp
 
-# OS
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+
+# System files
 .DS_Store
 Thumbs.db
 
-# Logs
-/logs/
-/storage/logs/*.log
-
-# Cache
-/storage/cache/*
-!/storage/cache/.gitkeep
-
-# Session
-/storage/sessions/*
-!/storage/sessions/.gitkeep
-
-# Uploads
-/public/uploads/*
-!/public/uploads/.gitkeep
-
-# Build
-/public/build/
-/dist/
-
-# Test Coverage
-coverage/
-.phpunit.cache/
-
-# Temporary
-*.tmp
-*.temp
-
-# NovaFlow specific
-/storage/rate_limits/*
-!/storage/rate_limits/.gitkeep
+# Compression files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```

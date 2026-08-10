@@ -67,34 +67,40 @@ class AdminUserController extends Controller
      */
     public function store(): void
     {
-        $name = $this->post('name');
-        $email = $this->post('email');
-        $password = $this->post('password');
-        $role = $this->post('role', 'user');
-        $status = $this->post('status', 'active');
+        $data = [
+            'name' => $this->post('name'),
+            'email' => $this->post('email'),
+            'password' => $this->post('password'),
+            'role' => $this->post('role', 'user'),
+            'status' => $this->post('status', 'active')
+        ];
 
-        // Validation
-        if (empty($name) || empty($email) || empty($password)) {
-            Flash::error('সবগুলো ঘর পূরণ করুন।');
-            $this->redirect('/admin/users/create');
-        }
+        // Validation using Validator class
+        $validator = \NovaFlow\Core\Validator::make($data, [
+            'name' => 'required|min:3|max:100',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:8|confirmed',
+            'role' => 'required|in:admin,user',
+            'status' => 'required|in:active,inactive'
+        ], [], [
+            'name' => 'নাম',
+            'email' => 'ইমেইল',
+            'password' => 'পাসওয়ার্ড',
+            'role' => 'ভূমিকা',
+            'status' => 'অবস্থা'
+        ]);
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Flash::error('সঠিক ইমেইল এড্রেস দিন।');
-            $this->redirect('/admin/users/create');
-        }
-
-        if (UserModel::findByEmail($email)) {
-            Flash::error('এই ইমেইল ইতিমধ্যে ব্যবহৃত হয়েছে।');
+        if (!$validator->validate()) {
+            Flash::error($validator->firstError(array_key_first($validator->errors())));
             $this->redirect('/admin/users/create');
         }
 
         $user = new UserModel();
-        $user->name = $name;
-        $user->email = $email;
-        $user->password = Security::hashPassword($password);
-        $user->role = $role;
-        $user->status = $status;
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->password = Security::hashPassword($data['password']);
+        $user->role = $data['role'];
+        $user->status = $data['status'];
         $user->save();
 
         Flash::success('ব্যবহারকারী সফলভাবে তৈরি হয়েছে!');
@@ -131,28 +137,50 @@ class AdminUserController extends Controller
             $this->redirect('/admin/users');
         }
 
-        $name = $this->post('name');
-        $email = $this->post('email');
+        $data = [
+            'name' => $this->post('name'),
+            'email' => $this->post('email'),
+            'role' => $this->post('role', $user->role),
+            'status' => $this->post('status', $user->status)
+        ];
+
+        // Add password only if provided
         $password = $this->post('password');
-        $role = $this->post('role', $user->role);
-        $status = $this->post('status', $user->status);
+        if (!empty($password)) {
+            $data['password'] = $password;
+            $data['password_confirmation'] = $this->post('password_confirmation');
+        }
 
-        if (empty($name) || empty($email)) {
-            Flash::error('নাম এবং ইমেইল অবশ্যই।');
+        // Validation rules
+        $rules = [
+            'name' => 'required|min:3|max:100',
+            'email' => "required|email|unique:users,email,{$id},id",
+            'role' => 'required|in:admin,user',
+            'status' => 'required|in:active,inactive'
+        ];
+
+        // Add password validation only if password is being changed
+        if (!empty($password)) {
+            $rules['password'] = 'required|min:8|confirmed';
+        }
+
+        $validator = \NovaFlow\Core\Validator::make($data, $rules, [], [
+            'name' => 'নাম',
+            'email' => 'ইমেইল',
+            'password' => 'পাসওয়ার্ড',
+            'role' => 'ভূমিকা',
+            'status' => 'অবস্থা'
+        ]);
+
+        if (!$validator->validate()) {
+            Flash::error($validator->firstError(array_key_first($validator->errors())));
             $this->redirect('/admin/users/edit/' . $id);
         }
 
-        // Check email uniqueness
-        $existing = UserModel::findByEmail($email);
-        if ($existing && $existing->id != $id) {
-            Flash::error('এই ইমেইল ইতিমধ্যে ব্যবহৃত হয়েছে।');
-            $this->redirect('/admin/users/edit/' . $id);
-        }
-
-        $user->name = $name;
-        $user->email = $email;
-        $user->role = $role;
-        $user->status = $status;
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->role = $data['role'];
+        $user->status = $data['status'];
 
         if (!empty($password)) {
             $user->password = Security::hashPassword($password);
