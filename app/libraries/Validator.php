@@ -69,13 +69,34 @@ class Validator
         list($ruleName, $params) = $this->parseRule($rule);
 
         // Skip other validations if field is empty and not required
-        if ($ruleName !== 'required' && ($value === null || $value === '')) {
+        if (!in_array($ruleName, ['required', 'required_if']) && ($value === null || $value === '')) {
             return;
         }
 
         if (!$this->passes($ruleName, $value, $params, $field)) {
             $this->addError($field, $ruleName, $params);
         }
+    }
+
+    /**
+     * Check if a field has a specific rule
+     */
+    private function hasRule($field, $ruleName)
+    {
+        if (!isset($this->rules[$field])) {
+            return false;
+        }
+
+        $rules = $this->rules[$field];
+        $rules = is_string($rules) ? explode('|', $rules) : $rules;
+
+        foreach ($rules as $rule) {
+            $parsedRuleName = $this->parseRule($rule)[0];
+            if ($parsedRuleName === $ruleName) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -107,13 +128,13 @@ class Validator
                 return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
 
             case 'min':
-                if (is_numeric($value)) {
+                if ($this->hasRule($field, 'numeric') || $this->hasRule($field, 'integer')) {
                     return $value >= $params[0];
                 }
                 return mb_strlen((string)$value, 'UTF-8') >= $params[0];
 
             case 'max':
-                if (is_numeric($value)) {
+                if ($this->hasRule($field, 'numeric') || $this->hasRule($field, 'integer')) {
                     return $value <= $params[0];
                 }
                 return mb_strlen((string)$value, 'UTF-8') <= $params[0];
