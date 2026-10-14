@@ -26,7 +26,7 @@ class AdminSettingsController extends Controller
 
     public function update(): void
     {
-        $data = $this->post();
+        $data = $this->allPost();
         
         foreach ($data as $key => $value) {
             if ($key === 'csrf_token') continue;

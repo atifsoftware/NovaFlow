@@ -27,6 +27,19 @@ class QueueWorker
         }
     }
 
+    /**
+     * Run the next available job (for CLI single step or testing)
+     */
+    public function runNextJob(string $queue = 'default'): bool
+    {
+        $job = Queue::pop($queue);
+        if ($job) {
+            $this->process($job);
+            return true;
+        }
+        return false;
+    }
+
     protected function process(object $jobRecord)
     {
         $payload = json_decode($jobRecord->payload, true);
@@ -36,7 +49,7 @@ class QueueWorker
 
         try {
             /** @var Job $jobInstance */
-            $jobInstance = unserialize($payload['instance'], ['allowed_classes' => [$displayName]]);
+            $jobInstance = unserialize($payload['instance']);
             
             if (!$jobInstance instanceof Job) {
                 throw new \Exception("Job class must extend NovaFlow\\Core\\Job");

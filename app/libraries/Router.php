@@ -183,6 +183,7 @@ class Router
             $result = call_user_func_array($callback, array_merge([$this->request, $this->response], $params));
             if (str_starts_with($this->request->getPath(), '/api')) {
                 if (ob_get_length()) ob_clean();
+                header('Content-Type: application/json; charset=utf-8');
             }
             echo $result;
             return;

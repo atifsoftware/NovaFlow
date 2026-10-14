@@ -57,31 +57,22 @@ if (!function_exists('flash')) {
 
 if (!function_exists('csrf_token')) {
     /**
-     * Get the CSRF token
+     * Get CSRF Token
      */
-    function csrf_token()
+    function csrf_token(): string
     {
-        return \NovaFlow\Core\Security::generateCSRFToken();
+        return \NovaFlow\Core\Security::getCSRFToken();
     }
 }
 
 if (!function_exists('csrf_field')) {
     /**
-     * Generate CSRF token field for forms
+     * Generate CSRF Hidden Input Field
      */
-    function csrf_field()
+    function csrf_field(): string
     {
-        return '<input type="hidden" name="_csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
-    }
-}
-
-if (!function_exists('base_url')) {
-    /**
-     * Get the base URL
-     */
-    function base_url($path = '')
-    {
-        return BASE_URL . $path;
+        $token = csrf_token();
+        return '<input type="hidden" name="_token" value="' . $token . '">';
     }
 }
 
@@ -170,17 +161,54 @@ if (!function_exists('config')) {
     }
 }
 
-if (!function_exists('acl_check')) {
+if (!function_exists('__')) {
     /**
-     * Check user permissions (ACL)
+     * Localize translation key
      */
-    function acl_check(string $permission): bool {
-        $userRole = $_SESSION['user_role'] ?? 'guest';
-        $permissions = [
-            'admin' => ['*'],
-            'manager' => ['read', 'write', 'edit'],
-            'user' => ['read']
-        ];
-        return in_array($permission, $permissions[$userRole] ?? []) || in_array('*', $permissions[$userRole] ?? []);
+    function __($key, $default = '') {
+        static $translations = [];
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (isset($_GET['lang']) && in_array($_GET['lang'], ['bn', 'en'])) {
+            $_SESSION['lang'] = $_GET['lang'];
+        }
+        
+        $lang = $_SESSION['lang'] ?? 'bn';
+        
+        if (!isset($translations[$lang])) {
+            $file = BASE_PATH . "/app/lang/{$lang}.php";
+            if (file_exists($file)) {
+                $translations[$lang] = require $file;
+            } else {
+                $translations[$lang] = [];
+            }
+        }
+        
+        return $translations[$lang][$key] ?? ($default ?: $key);
     }
 }
+
+if (!function_exists('current_lang')) {
+    /**
+     * Get current active language
+     */
+    function current_lang() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        return $_SESSION['lang'] ?? 'bn';
+    }
+}
+
+if (!function_exists('event')) {
+    /**
+     * Dispatch an event with optional payload
+     */
+    function event(string|object $event, mixed $payload = []): array {
+        return \NovaFlow\Core\Event::dispatch($event, $payload);
+    }
+}
+

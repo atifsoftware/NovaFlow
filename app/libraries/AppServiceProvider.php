@@ -2,6 +2,9 @@
 
 namespace NovaFlow\Core;
 
+use NovaFlow\Core\Database\DatabaseManager;
+use NovaFlow\Core\Database\Contracts\ConnectionInterface;
+
 /**
  * App Service Provider
  */
@@ -12,28 +15,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // Register ProductService
-        $this->container->singleton(\App\Services\ProductService::class, function () {
-            return new \App\Services\ProductService();
+        // Register Database Manager singleton
+        $this->container->singleton(DatabaseManager::class, function () {
+            return new DatabaseManager();
         });
 
-        // Register AuthService
-        $this->container->singleton(\App\Services\AuthService::class, function () {
-            return new \App\Services\AuthService();
-        });
-
-        // Bind Database Driver based on config
+        // Bind Database Driver and Connection interface to default connection
         $this->container->singleton(DatabaseInterface::class, function () {
-            // JahinMart primarily uses PDO, so we default to PDODriver
-            $driver = defined('DB_DRIVER') ? DB_DRIVER : 'pdo';
-
-            if ($driver === 'pdo') {
-                return new PDODriver();
-            }
-
-            // Fallback to default mysqli if specifically requested (though PDODriver is preferred here)
-            return new PDODriver(); 
+            return $this->container->make(DatabaseManager::class)->connection();
         });
+
+        $this->container->singleton(ConnectionInterface::class, function () {
+            return $this->container->make(DatabaseManager::class)->connection();
+        });
+
+        // Register ProductService if present
+        if (class_exists(\App\Services\ProductService::class)) {
+            $this->container->singleton(\App\Services\ProductService::class, function () {
+                return new \App\Services\ProductService();
+            });
+        }
     }
 
     /**

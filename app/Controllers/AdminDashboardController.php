@@ -2,8 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Models\UserModel;
 use NovaFlow\Core\Controller;
+use NovaFlow\Core\DB;
 
 /**
  * AdminDashboardController
@@ -18,7 +18,7 @@ class AdminDashboardController extends Controller
 
     public function index(): void
     {
-        $this->view('admin/dashboard/index', [
+        $this->view('admin.dashboard.index', [
             'title' => 'ড্যাশবোর্ড — NovaFlow',
             'stats' => $this->getStats()
         ], 'admin');
@@ -26,16 +26,12 @@ class AdminDashboardController extends Controller
 
     private function getStats(): array
     {
-        $users = UserModel::query()->count() ?? 0;
-        $activeUsers = UserModel::query()->where('status', 'active')->count() ?? 0;
-
+        // Placeholder stats for a fresh framework
         return [
-            'users' => $users,
-            'active_users' => $activeUsers,
+            'users' => DB::fetchValue("SELECT COUNT(*) FROM users"),
             'online' => 1,
-            'server' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
-            'php_version' => PHP_VERSION,
-            'app_version' => APP_VERSION ?? '1.0.0'
+            'server' => $_SERVER['SERVER_SOFTWARE'],
+            'php_version' => PHP_VERSION
         ];
     }
 }

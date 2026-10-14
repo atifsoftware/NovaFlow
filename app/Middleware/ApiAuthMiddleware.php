@@ -34,7 +34,7 @@ class ApiAuthMiddleware implements Middleware
         }
 
         // Store user data in request for later use
-        Request::setUser($decoded);
+        $request->setUser($decoded);
 
         return true;
     }

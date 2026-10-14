@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 use NovaFlow\Core\Validator;
 
 class ValidatorTest extends TestCase

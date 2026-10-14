@@ -34,7 +34,7 @@ class Gemini
         // Use a better personality if system instruction is provided
         if (!empty($systemInstruction)) {
             $data = [
-                'system_instruction' => [
+                'systemInstruction' => [
                     'parts' => [
                         ['text' => $systemInstruction]
                     ]

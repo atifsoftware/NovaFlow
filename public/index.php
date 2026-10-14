@@ -11,35 +11,46 @@ error_reporting(E_ALL);
 // 0. Base Path Setup
 define('BASE_PATH', dirname(__DIR__));
 
-// 1. Autoloading (Composer PSR-4)
-if (file_exists(BASE_PATH . '/vendor/autoload.php')) {
-    require_once BASE_PATH . '/vendor/autoload.php';
+// 1. Composer & Autoloader
+if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
 }
-require_once BASE_PATH . '/app/libraries/helpers.php';
+require_once dirname(__DIR__) . '/app/libraries/Autoloader.php';
+require_once dirname(__DIR__) . '/app/libraries/helpers.php';
 
-// 2. Load Environment (CRITICAL: MUST BE BEFORE CONFIG)
-\NovaFlow\Core\Dotenv::load(BASE_PATH . '/.env');
+Autoloader::register();
+Autoloader::addNamespace('NovaFlow\Core', dirname(__DIR__) . '/app/libraries');
+Autoloader::addNamespace('App\Controllers', dirname(__DIR__) . '/app/controllers');
+Autoloader::addNamespace('App\Models', dirname(__DIR__) . '/app/models');
+Autoloader::addNamespace('App\Middleware', dirname(__DIR__) . '/app/middleware');
+Autoloader::addNamespace('App\Services', dirname(__DIR__) . '/app/services');
 
-// 3. Load Configuration & Session
-require_once BASE_PATH . '/config/config.php';
-session_name(SESSION_NAME);
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// 2. Load Environment
+\NovaFlow\Core\Dotenv::load(dirname(__DIR__) . '/.env');
 
-// 4. Database & Error Handling
-require_once BASE_PATH . '/config/database.php';
+// 3. Configuration & Database
+require_once dirname(__DIR__) . '/config/config.php';
+require_once dirname(__DIR__) . '/config/database.php';
+
+// 4. Conditional Register Error Handler (Only for Development/Local)
 if (defined('APP_ENV') && (APP_ENV === 'development' || APP_ENV === 'local')) {
     \NovaFlow\Core\IntelligentErrorHandler::register();
 }
 
 // 5. Bootstrap
-require_once BASE_PATH . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-// 6. Secure Headers
+// 5. Secure Headers & Session (Stateless API routes bypass session_start for optimal performance)
 \NovaFlow\Core\Request::setSecureHeaders();
+$uri = $_SERVER['REQUEST_URI'] ?? '';
+$isApi = str_contains($uri, '/api/') || str_ends_with($uri, '/api');
 
-// 7. Router Initialization
+if (!$isApi && session_status() === PHP_SESSION_NONE) {
+    session_name(SESSION_NAME);
+    session_start();
+}
+
+// 6. Router Initialization
 $router = new \NovaFlow\Core\Router();
 
 // Register the same router instance in the DI container so it's shared

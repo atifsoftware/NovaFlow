@@ -1,31 +1,16 @@
-# Prevent Directory Listing
+# Disable directory browsing
 Options -Indexes
-
-# Disable Directory Browsing and Protect Sensitive Files
-<IfModule mod_authz_core.c>
-    <FilesMatch "^\.env|composer\.(json|lock)|cli\.php|phpunit\.xml|database\.sql|novaflow_db\.sql|LICENSE|README\.md|Dockerfile">
-        Require all denied
-    </FilesMatch>
-</IfModule>
-<IfModule !mod_authz_core.c>
-    <FilesMatch "^\.env|composer\.(json|lock)|cli\.php|phpunit\.xml|database\.sql|novaflow_db\.sql|LICENSE|README\.md|Dockerfile">
-        Order allow,deny
-        Deny from all
-    </FilesMatch>
-</IfModule>
-
-# Protect Hidden Files and Folders (like .git, .env)
-RedirectMatch 403 /\..*$
+Options -MultiViews
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /NovaFlow/
-    
-    # Block direct web access to core directories
-    RewriteRule ^(app|config|logs|tests|vendor)(\/|$) - [F,L]
-    
-    # Route all requests to public/ directory
-    RewriteRule ^$ public/ [L]
-    RewriteRule (.*) public/$1 [L]
-</IfModule>
 
+    # Direct access to public folder bypasses rewriting
+    RewriteCond %{REQUEST_URI} ^/NovaFlow/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # Rewrite empty root or any path into public
+    RewriteRule ^$ public/ [L]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

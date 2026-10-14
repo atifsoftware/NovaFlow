@@ -3,8 +3,11 @@
 namespace NovaFlow\Core\QueryBuilder;
 
 use NovaFlow\Core\DatabaseInterface;
+use NovaFlow\Core\Database\Contracts\GrammarInterface;
+use NovaFlow\Core\Database\Grammar\MySqlGrammar;
 use NovaFlow\Core\Model;
 use NovaFlow\Core\RawExpression;
+use NovaFlow\Core\Pagination\LengthAwarePaginator;
 use Closure;
 use InvalidArgumentException;
 use Exception;
@@ -15,6 +18,7 @@ use Exception;
 class QueryBuilder
 {
     private $db;
+    private $grammar;
     private $table;
     private $model; // Optional: Model class name or instance
 
@@ -28,8 +32,6 @@ class QueryBuilder
     private $having = '';
     private $ignoreSoftDelete = false;
     private $unions = [];
-    private $joinBindings = [];
-    private $havingBindings = [];
 
     // For WITH clauses (CTEs)
     private $withClauses = [];
@@ -39,19 +41,19 @@ class QueryBuilder
         return get_class($this->db);
     }
 
-    public function __construct(DatabaseInterface $db)
+    public function __construct(DatabaseInterface $db, ?GrammarInterface $grammar = null)
     {
         $this->db = $db;
+        $this->grammar = $grammar ?? (method_exists($db, 'getGrammar') ? $db->getGrammar() : new MySqlGrammar());
     }
 
     /**
-     * Belongs To relationship
+     * Set the table
      */
-    public function belongsTo(string $relatedModel, string $foreignKey, string $localKey = 'id'): mixed
+    public function table(string $table): self
     {
-        $related = new $relatedModel();
-        $result = $this->join($related->getTable(), $this->table . '.' . $foreignKey, '=', $related->getTable() . '.' . $localKey)->first();
-        return $result ? $related->fill($result) : null;
+        $this->table = $table;
+        return $this;
     }
 
     /**
@@ -114,7 +116,7 @@ class QueryBuilder
     public function where($column, $operator = null, $value = null): self
     {
         if ($column instanceof Closure) {
-            $query = new self($this->db);
+            $query = new self($this->db, $this->grammar);
             $query->setModel($this->model); // Inherit model
             $query->table($this->table);    // Inherit table
             $column($query);
@@ -153,7 +155,7 @@ class QueryBuilder
     public function orWhere($column, $operator = null, $value = null): self
     {
         if ($column instanceof Closure) {
-            $query = new self($this->db);
+            $query = new self($this->db, $this->grammar);
             $query->setModel($this->model);
             $query->table($this->table);
             $column($query);
@@ -190,6 +192,17 @@ class QueryBuilder
         return $this;
     }
 
+    public function orWhereIn($column, array $values): self
+    {
+        $this->wheres[] = [
+            'column' => $column,
+            'operator' => 'IN',
+            'value' => $values,
+            'boolean' => 'OR'
+        ];
+        return $this;
+    }
+
     public function whereNotIn($column, array $values): self
     {
         $this->wheres[] = [
@@ -201,9 +214,26 @@ class QueryBuilder
         return $this;
     }
 
+    public function orWhereNotIn($column, array $values): self
+    {
+        $this->wheres[] = [
+            'column' => $column,
+            'operator' => 'NOT IN',
+            'value' => $values,
+            'boolean' => 'OR'
+        ];
+        return $this;
+    }
+
     public function whereNull($column): self
     {
         $this->wheres[] = ['column' => $column, 'operator' => 'IS NULL', 'value' => null, 'boolean' => 'AND'];
+        return $this;
+    }
+
+    public function orWhereNull($column): self
+    {
+        $this->wheres[] = ['column' => $column, 'operator' => 'IS NULL', 'value' => null, 'boolean' => 'OR'];
         return $this;
     }
 
@@ -211,6 +241,35 @@ class QueryBuilder
     {
         $this->wheres[] = ['column' => $column, 'operator' => 'IS NOT NULL', 'value' => null, 'boolean' => 'AND'];
         return $this;
+    }
+
+    public function orWhereNotNull($column): self
+    {
+        $this->wheres[] = ['column' => $column, 'operator' => 'IS NOT NULL', 'value' => null, 'boolean' => 'OR'];
+        return $this;
+    }
+
+    public function whereColumn($first, $operator = null, $second = null, $boolean = 'AND'): self
+    {
+        if ($second === null) {
+            $second = $operator;
+            $operator = '=';
+        }
+
+        $this->wheres[] = [
+            'column' => $first,
+            'operator' => 'COLUMN',
+            'sql_operator' => $operator,
+            'value' => $second,
+            'boolean' => $boolean
+        ];
+
+        return $this;
+    }
+
+    public function orWhereColumn($first, $operator = null, $second = null): self
+    {
+        return $this->whereColumn($first, $operator, $second, 'OR');
     }
 
     public function whereLike($column, $value): self
@@ -339,32 +398,9 @@ class QueryBuilder
         return $this;
     }
 
-    public function addJoinBinding($value): void
-    {
-        $this->joinBindings[] = $value;
-    }
-
     public function escapeIdentifier($identifier)
     {
-        if (stripos($identifier, ' as ') !== false) {
-            $parts = preg_split('/ as /i', $identifier);
-            return $this->escapeIdentifier(trim($parts[0])) . ' AS ' . $this->escapeIdentifier(trim($parts[1]));
-        }
-
-        if (strpos($identifier, '(') !== false || strpos($identifier, ')') !== false) {
-            return $identifier; 
-        }
-
-        if (strpos($identifier, '.') !== false) {
-            $parts = explode('.', $identifier);
-            return '`' . implode('`.`', $parts) . '`';
-        }
-        
-        if (strpos($identifier, '`') !== false) {
-            return $identifier;
-        }
-
-        return '`' . trim($identifier) . '`';
+        return $this->grammar->wrap($identifier);
     }
 
     public function join($table, $first, $operator = null, $second = null, $type = 'INNER'): self
@@ -372,31 +408,19 @@ class QueryBuilder
         $table = $this->escapeIdentifier($table);
 
         if ($first instanceof Closure) {
-            $builder = $this;
-            $joinBuilder = new class($builder) {
-                private $builder;
+            $joinBuilder = new class {
                 public $type;
                 public $table;
                 public $clauses = [];
-                
-                public function __construct($builder)
-                {
-                    $this->builder = $builder;
-                }
-                
                 public function on($first, $operator, $second)
                 {
-                    $firstEsc = $this->builder->escapeIdentifier($first);
-                    $secondEsc = $this->builder->escapeIdentifier($second);
-                    $this->clauses[] = "$firstEsc $operator $secondEsc";
+                    $this->clauses[] = "$first $operator $second";
                     return $this;
                 }
-                
                 public function where($column, $operator, $value)
                 {
-                    $columnEsc = $this->builder->escapeIdentifier($column);
-                    $this->clauses[] = "$columnEsc $operator ?";
-                    $this->builder->addJoinBinding($value);
+                    $val = is_numeric($value) ? $value : "'" . addslashes($value) . "'";
+                    $this->clauses[] = "$column $operator $val";
                     return $this;
                 }
             };
@@ -443,14 +467,12 @@ class QueryBuilder
             $operator = '=';
         }
 
-        $column = $this->escapeIdentifier($column);
-        $condition = "$column $operator ?";
+        $condition = "$column $operator '$value'";
         if ($this->having) {
             $this->having .= " AND $condition";
         } else {
             $this->having = "HAVING $condition";
         }
-        $this->havingBindings[] = $value;
         return $this;
     }
 
@@ -488,123 +510,97 @@ class QueryBuilder
     }
 
     /**
+     * Get the query grammar instance
+     */
+    public function getGrammar(): GrammarInterface
+    {
+        return $this->grammar;
+    }
+
+    /**
+     * Set the query grammar instance
+     */
+    public function setGrammar(GrammarInterface $grammar): self
+    {
+        $this->grammar = $grammar;
+        return $this;
+    }
+
+    public function getTable(): ?string
+    {
+        return $this->table;
+    }
+
+    public function getColumns()
+    {
+        return $this->columns;
+    }
+
+    public function getWheres(): array
+    {
+        return $this->wheres;
+    }
+
+    public function getJoins(): array
+    {
+        return $this->joins;
+    }
+
+    public function getOrders()
+    {
+        return $this->orderBy;
+    }
+
+    public function getGroups()
+    {
+        return $this->groupBy;
+    }
+
+    public function getHaving(): ?string
+    {
+        return $this->having;
+    }
+
+    public function getLimit(): ?int
+    {
+        return $this->limit;
+    }
+
+    public function getOffset(): ?int
+    {
+        return $this->offset;
+    }
+
+    public function getUnions(): array
+    {
+        return $this->unions;
+    }
+
+    public function getDistinct(): bool
+    {
+        return (strpos((string) $this->columns, 'DISTINCT') !== false);
+    }
+
+    /**
      * Build the query SQL
      */
     public function toSql(): string
     {
-        if (!$this->table) {
-            throw new Exception("Table not set");
-        }
-
-        $table = $this->escapeIdentifier($this->table);
-        $sql = "SELECT {$this->columns} FROM $table";
-
-        if (!empty($this->joins)) {
-            $sql .= " " . implode(" ", $this->joins);
-        }
-
-        list($whereSql, $params) = $this->buildWhere();
-        if ($whereSql) {
-            $sql .= " WHERE $whereSql";
-        }
-
-        if ($this->groupBy)
-            $sql .= " " . $this->groupBy;
-        if ($this->having)
-            $sql .= " " . $this->having;
-        if ($this->orderBy)
-            $sql .= " ORDER BY " . $this->orderBy;
-
-        if ($this->limit !== null) {
-            $sql .= " LIMIT " . $this->limit;
-            if ($this->offset !== null) {
-                $sql .= " OFFSET " . $this->offset;
-            }
-        }
-
-        return $sql;
+        return $this->grammar->compileSelect($this);
     }
 
-    private function buildWhere(): array
+    public function buildWhere(): array
     {
-        if (empty($this->wheres))
-            return ['', []];
-
-        $sqlParts = [];
-        $params = [];
-
-        foreach ($this->wheres as $i => $where) {
-            $prefix = ($i === 0) ? '' : ($where['boolean'] . ' ');
-
-            if (isset($where['type']) && $where['type'] === 'NESTED') {
-                $nestedQuery = $where['query'];
-                list($nestedSql, $nestedParams) = $nestedQuery->buildWhere();
-                if ($nestedSql) {
-                    $sqlParts[] = "$prefix($nestedSql)";
-                    $params = array_merge($params, $nestedParams);
-                }
-                continue;
-            }
-
-            $col = isset($where['column']) ? $where['column'] : null;
-            $op = isset($where['operator']) ? strtoupper($where['operator']) : null;
-            $val = isset($where['value']) ? $where['value'] : null;
-
-            if ($op === 'IN' || $op === 'NOT IN') {
-                $placeholders = implode(', ', array_fill(0, count($val), '?'));
-                $col = $this->escapeIdentifier($col);
-                $sqlParts[] = "$prefix$col $op ($placeholders)";
-                $params = array_merge($params, $val);
-            } elseif ($op === 'BETWEEN' || $op === 'NOT BETWEEN') {
-                $col = $this->escapeIdentifier($col);
-                $sqlParts[] = "$prefix$col $op ? AND ?";
-                $params[] = $val[0];
-                $params[] = $val[1];
-            } elseif ($op === 'DATE') {
-                $sqlOp = $where['sql_operator'];
-                $colWithBackticks = $this->escapeIdentifier($col);
-                $sqlParts[] = "$prefix DATE($colWithBackticks) $sqlOp ?";
-                $params[] = $val;
-            } elseif ($op === 'DATE_FUNC') {
-                $func = $where['function'];
-                $sqlOp = $where['sql_operator'];
-                $col = $this->escapeIdentifier($col);
-                $sqlParts[] = "$prefix $func($col) $sqlOp ?";
-                $params[] = $val;
-            } elseif ($op === 'RAW') {
-                $sqlParts[] = "$prefix " . $where['sql'];
-                $params = array_merge($params, $val);
-            } elseif ($op === 'JSON_CONTAINS') {
-                $path = '$';
-                if (strpos($col, '->') !== false) {
-                    $parts = explode('->', $col);
-                    $col = $parts[0];
-                    $path .= '.' . implode('.', array_slice($parts, 1));
-                }
-                $col = $this->escapeIdentifier($col);
-                $sqlParts[] = "$prefix JSON_CONTAINS($col, ?, ?)";
-                $params[] = json_encode($val);
-                $params[] = $path;
-
-            } elseif ($op === 'IS NULL' || $op === 'IS NOT NULL') {
-                $col = $this->escapeIdentifier($col);
-                $sqlParts[] = "$prefix$col $op";
-            } else {
-                if ($col) {
-                    $col = $this->escapeIdentifier($col);
-                    $sqlParts[] = "$prefix$col $op ?";
-                    $params[] = $val;
-                }
-            }
+        $sql = $this->grammar->compileWheres($this);
+        if (strpos($sql, 'WHERE ') === 0) {
+            $sql = substr($sql, 6);
         }
-
-        return [implode(' ', $sqlParts), $params];
+        return [$sql, $this->getBindings()];
     }
 
     public function getBindings(): array
     {
-        list($sql, $params) = $this->buildWhere();
-        return array_merge($this->joinBindings, $params, $this->havingBindings);
+        return $this->grammar->getWhereBindings($this->wheres);
     }
 
     public function get(): array
@@ -643,11 +639,47 @@ class QueryBuilder
         }, $results);
     }
 
+    /**
+     * Paginate the results into a LengthAwarePaginator
+     */
+    public function paginate(int $perPage = 15, ?int $page = null, string $pageName = 'page'): LengthAwarePaginator
+    {
+        $page = $page ?: (isset($_GET[$pageName]) ? (int) $_GET[$pageName] : 1);
+        $page = max(1, $page);
+
+        // Count total results before applying limit/offset
+        $total = $this->count();
+
+        // Calculate offset
+        $offset = ($page - 1) * $perPage;
+
+        // Fetch slice
+        $items = $this->limit($perPage)->offset($offset)->get();
+
+        return new LengthAwarePaginator($items, $total, $perPage, $page, ['pageName' => $pageName]);
+    }
+
     public function first()
     {
         $this->limit(1);
         $results = $this->get();
         return $results[0] ?? null;
+    }
+
+    /**
+     * Check if any matching records exist
+     */
+    public function exists(): bool
+    {
+        return $this->first() !== null;
+    }
+
+    /**
+     * Check if no matching records exist
+     */
+    public function doesntExist(): bool
+    {
+        return !$this->exists();
     }
 
     /**
@@ -693,56 +725,48 @@ class QueryBuilder
 
     public function insert(array $data)
     {
-        if (!$this->table)
+        if (!$this->table) {
             throw new Exception("Table not set");
+        }
 
-        $keys = [];
-        $placeholders = [];
+        $sql = $this->grammar->compileInsert($this, $data);
         $params = [];
-
-        foreach ($data as $col => $val) {
-            $keys[] = "`$col`";
+        foreach ($data as $val) {
             if ($val instanceof RawExpression) {
-                $placeholders[] = $val->getExpression();
                 $params = array_merge($params, $val->getBindings());
             } else {
-                $placeholders[] = "?";
                 $params[] = $val;
             }
         }
 
-        $cols = implode(', ', $keys);
-        $placeholderSql = implode(', ', $placeholders);
+        return $this->db->query($sql, $params);
+    }
 
-        $sql = "INSERT INTO `{$this->table}` ($cols) VALUES ($placeholderSql)";
-
-        return $this->db->query($sql, $params); 
+    /**
+     * Insert a new record and return its ID
+     */
+    public function insertGetId(array $data)
+    {
+        $res = $this->insert($data);
+        return $res ?: $this->db->getLastId();
     }
 
     public function update(array $data)
     {
-        if (!$this->table)
+        if (!$this->table) {
             throw new Exception("Table not set");
+        }
 
-        $sets = [];
+        $sql = $this->grammar->compileUpdate($this, $data);
         $params = [];
-        foreach ($data as $col => $val) {
+        foreach ($data as $val) {
             if ($val instanceof RawExpression) {
-                $sets[] = "`$col` = " . $val->getExpression();
                 $params = array_merge($params, $val->getBindings());
             } else {
-                $sets[] = "`$col` = ?";
                 $params[] = $val;
             }
         }
-        $setSql = implode(', ', $sets);
-
-        list($whereSql, $whereParams) = $this->buildWhere();
-        $params = array_merge($params, $whereParams);
-
-        $sql = "UPDATE `{$this->table}` SET $setSql";
-        if ($whereSql)
-            $sql .= " WHERE $whereSql";
+        $params = array_merge($params, $this->getBindings());
 
         return $this->db->query($sql, $params);
     }
@@ -752,8 +776,9 @@ class QueryBuilder
      */
     public function increment(string $column, int $amount = 1)
     {
+        $wrapped = $this->grammar->wrap($column);
         return $this->update([
-            $column => new RawExpression("`$column` + $amount")
+            $column => new RawExpression("$wrapped + $amount")
         ]);
     }
 
@@ -762,29 +787,25 @@ class QueryBuilder
      */
     public function decrement(string $column, int $amount = 1)
     {
+        $wrapped = $this->grammar->wrap($column);
         return $this->update([
-            $column => new RawExpression("`$column` - $amount")
+            $column => new RawExpression("$wrapped - $amount")
         ]);
     }
 
     public function delete()
     {
-        if (!$this->table)
+        if (!$this->table) {
             throw new Exception("Table not set");
+        }
 
-        list($whereSql, $whereParams) = $this->buildWhere();
-
-        $sql = "DELETE FROM `{$this->table}`";
-        if ($whereSql)
-            $sql .= " WHERE $whereSql";
-
-        return $this->db->query($sql, $whereParams);
+        $sql = $this->grammar->compileDelete($this);
+        return $this->db->query($sql, $this->getBindings());
     }
     
     public function orderBy($column, $direction = 'ASC'): self
     {
-        $direction = in_array(strtoupper($direction), ['ASC', 'DESC']) ? strtoupper($direction) : 'ASC';
-        $column = $this->escapeIdentifier($column);
+        $direction = strtoupper($direction);
         $this->orderBy = $this->orderBy ? "$this->orderBy, $column $direction" : "$column $direction";
         return $this;
     }

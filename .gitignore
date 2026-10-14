@@ -1,26 +1,21 @@
-```gitignore
-# Compiled and build artifacts
-*.pyc
-__pycache__/
-
-# Dependencies
-vendor/
-composer.lock
-
-# Logs and temp files
-*.log
-*.tmp
-
-# Environment
+# NovaFlow — GitHub Gitignore Template
+/vendor/
+node_modules/
 .env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
+.env.backup
+composer.lock
+composer.phar
+*.log
+/logs/*
+!/logs/.gitkeep
 .idea/
-
-# OS
+.vscode/
+*.code-workspace
 .DS_Store
-Thumbs.db
-```.phpunit.cache
+.phpunit.cache/
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/queue/*
+!/storage/queue/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep

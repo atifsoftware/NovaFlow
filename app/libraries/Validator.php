@@ -33,6 +33,11 @@ class Validator
         'between' => ':field অবশ্যই :param এবং :param2 এর মধ্যে হতে হবে।',
         'required_if' => ':field ঘরটি পূরণ করা আবশ্যক।',
         'different' => ':field অবশ্যই :param থেকে আলাদা হতে হবে।',
+        'boolean' => ':field অবশ্যই সত্য (true) বা মিথ্যা (false) হতে হবে।',
+        'array' => ':field অবশ্যই একটি অ্যারে হতে হবে।',
+        'json' => ':field অবশ্যই একটি সঠিক JSON স্ট্রিং হতে হবে।',
+        'uuid' => ':field অবশ্যই একটি সঠিক UUID হতে হবে।',
+        'ip' => ':field অবশ্যই একটি সঠিক IP এড্রেস হতে হবে।',
     ];
 
     public function __construct($data = [], $rules = [])
@@ -187,6 +192,23 @@ class Validator
                 $otherField = $params[0];
                 return (string)$value !== (string)$this->getValue($otherField);
 
+            case 'boolean':
+                return in_array($value, [true, false, 0, 1, '0', '1', 'true', 'false'], true);
+
+            case 'array':
+                return is_array($value);
+
+            case 'json':
+                if (!is_string($value)) return false;
+                json_decode($value);
+                return json_last_error() === JSON_ERROR_NONE;
+
+            case 'uuid':
+                return is_string($value) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value) === 1;
+
+            case 'ip':
+                return filter_var($value, FILTER_VALIDATE_IP) !== false;
+
             default:
                 return true;
         }
@@ -305,6 +327,36 @@ class Validator
             return isset($this->errors[$field]);
         }
         return !empty($this->errors);
+    }
+
+    /**
+     * Check if validation failed
+     */
+    public function fails(): bool
+    {
+        return !empty($this->errors);
+    }
+
+    /**
+     * Check if validation passed
+     */
+    public function passesValidation(): bool
+    {
+        return empty($this->errors);
+    }
+
+    /**
+     * Get validated data (only fields present in rules)
+     */
+    public function validated(): array
+    {
+        $validated = [];
+        foreach (array_keys($this->rules) as $field) {
+            if (array_key_exists($field, $this->data)) {
+                $validated[$field] = $this->data[$field];
+            }
+        }
+        return $validated;
     }
 
     /**

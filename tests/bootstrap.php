@@ -1,10 +1,10 @@
 <?php
-// PHPUnit Test Bootstrap File
+
+/**
+ * NovaFlow PHPUnit Bootstrap
+ */
 
 define('BASE_PATH', dirname(__DIR__));
 
-if (file_exists(BASE_PATH . '/vendor/autoload.php')) {
-    require_once BASE_PATH . '/vendor/autoload.php';
-}
-
-require_once BASE_PATH . '/app/libraries/helpers.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../app/libraries/helpers.php';

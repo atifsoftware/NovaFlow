@@ -18,7 +18,9 @@ interface DatabaseInterface
     public function beginTransaction();
     public function commit();
     public function rollback();
-    public function transaction(callable $callback);
+    public function inTransaction(): bool;
+    public function transactionLevel(): int;
+    public function transaction(callable $callback, int $attempts = 1);
 
     public function insert(string $table, array $data);
     public function update(string $table, array $data, array $where);
@@ -29,4 +31,8 @@ interface DatabaseInterface
 
     public function raw($value, array $bindings = []);
     public function escape(string $value): string;
+
+    public function getGrammar();
+    public function getDriverName(): string;
+    public function getConnection(): \PDO;
 }

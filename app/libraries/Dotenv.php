@@ -20,8 +20,8 @@ class Dotenv
             return;
         }
 
-        // If in app/libraries/, dirname(__DIR__, 2) is the project root
-        $path = $path ?? dirname(__DIR__, 2) . '/.env';
+        // Project root .env path
+        $path = $path ?? (file_exists(dirname(dirname(__DIR__)) . '/.env') ? dirname(dirname(__DIR__)) . '/.env' : dirname(__DIR__) . '/.env');
 
         if (!file_exists($path)) {
             return;

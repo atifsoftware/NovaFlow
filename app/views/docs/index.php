@@ -35,13 +35,6 @@
                 <a href="#cli" class="sidebar-link">CLI PowerPack / সিএলআই টুল</a>
                 <a href="#queue" class="sidebar-link">Async Queues / কিউ সিস্টেম</a>
                 <a href="#crud" class="sidebar-link">Master CRUD / অটোমেশন</a>
-                
-                <h6 class="text-uppercase small fw-bold text-muted mt-4 mb-3">Security & Features</h6>
-                <a href="#auth" class="sidebar-link">Authentication / প্রমাণীকরণ</a>
-                <a href="#validation" class="sidebar-link">Validation / ভ্যালিডেশন</a>
-                <a href="#upload" class="sidebar-link">File Upload / ফাইল আপলোড</a>
-                <a href="#pagination" class="sidebar-link">Pagination / পেজিনেশন</a>
-                <a href="#rate-limit" class="sidebar-link">Rate Limiting / রেট লিমিট</a>
             </div>
         </div>
 
@@ -149,159 +142,24 @@ $orders = DB::table('orders')
                     <p>NovaFlow স্বয়ংক্রিয় ডিপেন্ডেন্সি রেজল্যুশনের জন্য রিফ্লেকশন-ভিত্তিক কন্টেইনার ব্যবহার করে। আপনি আপনার বিজনেস লজিকগুলো <code>app/services</code>-এ রেজিস্টার করতে পারেন।</p>
                 </div>
 
-<pre><code>// Define a Service
+                <pre><code>// Define a Service
 namespace App\Services;
 
 class ProductService {
     public function getLatest() {
         return DB::table('products')->limit(5)->get();
     }
-}</code></pre>
-            </section>
+}
 
-            <hr class="opacity-10 my-5">
-
-            <!-- Controllers & DI -->
-            <section id="controllers" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">Controllers & Dependency Injection</h2>
-                    <p>NovaFlow controllers support automatic dependency injection via constructor. The Container resolves dependencies automatically using PHP Reflection.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">কন্ট্রোলার এবং ডিপেন্ডেন্সি ইনজেকশন (Controllers)</h2>
-                    <p>NovaFlow কন্ট্রোলারগুলো constructor-এর মাধ্যমে স্বয়ংক্রিয় ডিপেন্ডেন্সি ইনজেকশন সাপোর্ট করে। Container PHP Reflection ব্যবহার করে dependencies resolve করে।</p>
-                </div>
-
-                <pre><code>// Basic Controller
-namespace App\Controllers;
-
-use NovaFlow\Core\Controller;
-
+// In your Controller
 class HomeController extends Controller {
-    public function index() {
-        $this->view('welcome', ['title' => 'Welcome']);
-    }
-}
-
-// Controller with DI
-class ProductController extends Controller {
-    protected ProductService $productService;
-    protected Request $request;
-    protected Response $response;
-
-    // Dependencies automatically injected
-    public function __construct(
-        ProductService $productService,
-        Request $request,
-        Response $response
-    ) {
-        $this->productService = $productService;
-        $this->request = $request;
-        $this->response = $response;
-        parent::__construct();
-    }
+    public function __construct(protected ProductService $productService) {}
 
     public function index() {
-        $products = $this->productService->getAll();
-        $this->view('products.index', [
-            'products' => $products
-        ]);
-    }
-
-    public function show($id) {
-        $product = $this->productService->find($id);
-        if (!$product) {
-            $this->json(['error' => 'Not found'], 404);
-        }
-        $this->json($product);
-    }
-}
-
-// API Controller
-class ProductApiController extends ApiController {
-    public function index() {
-        return $this->success($data, 'Products fetched');
-    }
-
-    public function store() {
-        return $this->created($product, 'Created successfully');
+        $latest = $this->productService->getLatest();
+        $this->view('welcome', ['products' => $latest]);
     }
 }</code></pre>
-            </section>
-
-            <hr class="opacity-10 my-5">
-
-            <!-- Middleware -->
-            <section id="middleware" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">Middleware System</h2>
-                    <p>Middleware provides a way to filter HTTP requests before they reach the controller. NovaFlow includes auth, rate limiting, CORS, and custom middleware support.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">মিডলওয���্যার সিস্টেম (Middleware)</h2>
-                    <p>মিডলওয়্যার HTTP requests গুলো কন্ট্রোলারে পৌঁছানোর আগে ফিল্টার করার উপায় দেয়। NovaFlow-তে auth, rate limiting, CORS এবং কাস্টম মিডলওয়্যার সাপোর্ট আছে।</p>
-                </div>
-
-                <h5 class="mt-4 mb-3">Built-in Middleware</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered bg-white">
-                        <thead class="bg-light">
-                            <tr><th>Middleware</th><th>Description / বর্ণনা</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td><code>auth</code></td><td>Session-based authentication / সেশন প্রমাণীকরণ</td></tr>
-                            <tr><td><code>api</code></td><td>JWT API authentication / JWT এপিআই প্রমাণীকরণ</td></tr>
-                            <tr><td><code>admin</code></td><td>Admin role check / অ্যাডমিন রোল চেক</td></tr>
-                            <tr><td><code>guest</code></td><td>Redirect if logged in / লগইন থাকলে রিডাইরেক্ট</td></tr>
-                            <tr><td><code>rate</code></td><td>Rate limiting / রেট লিমিটিং</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h5 class="mt-4 mb-3">Create Custom Middleware</h5>
-                <pre><code>// app/middleware/CheckAgeMiddleware.php
-namespace App\Middleware;
-
-use NovaFlow\Core\Middleware;
-use NovaFlow\Core\Request;
-use NovaFlow\Core\Response;
-
-class CheckAgeMiddleware implements Middleware {
-    public function handle(Request $request, Response $response, array $args = []): bool {
-        $age = $request->input('age', 0);
-        
-        if ($age < 18) {
-            http_response_code(403);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Must be 18+']);
-            return false;
-        }
-        
-        return true;
-    }
-}
-
-// Register in Kernel
-class Kernel {
-    public static array $aliases = [
-        'auth' => AuthMiddleware::class,
-        'age' => CheckAgeMiddleware::class,
-        // ...
-    ];
-}</code></pre>
-
-                <h5 class="mt-4 mb-3">Use in Routes</h5>
-                <pre><code>// Single route
-$router->get('/adults', 'AdultController@index')->middleware('age');
-
-// Route group
-$router->group(['middleware' => 'auth'], function($router) {
-    $router->get('/dashboard', 'AdminController@index');
-});
-
-// Multiple middleware
-$router->post('/upload', 'UploadController@store')
-    ->middleware('auth', 'rate:upload');</code></pre>
             </section>
             <hr class="opacity-10 my-5">
 
@@ -447,190 +305,6 @@ php cli.php --work</code></pre>
                 </div>
                 
                 <p class="small text-muted">Benefit: Saves hours of boilerplate coding by ensuring all related files follow the PSR-4 standard and NovaFlow architecture.</p>
-            </section>
-
-            <hr class="opacity-10 my-5">
-
-            <!-- Authentication -->
-            <section id="auth" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">Authentication System</h2>
-                    <p>NovaFlow provides a complete AuthService for user authentication with session management, JWT tokens, and registration.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">প্রমাণীকরণ সিস্টেম (Authentication)</h2>
-                    <p>NovaFlow-তে সেশন ম্যানেজমেন্ট, JWT টোকেন এবং রেজিস্ট্রেশন সহ সম্পূর্ণ AuthService আছে।</p>
-                </div>
-
-                <pre><code>use App\Services\AuthService;
-
-// Login with Session
-$auth = Container::make(AuthService::class);
-$result = $auth->login('email', 'password', $remember = false);
-
-if ($result['success']) {
-    // Redirect to dashboard
-}
-
-// Login via API (returns JWT)
-$result = $auth->loginApi('email', 'password');
-$token = $result['token']; // Use this token
-
-// Register new user
-$auth->register([
-    'name' => 'John Doe',
-    'email' => 'john@example.com',
-    'password' => 'secure123'
-]);
-
-// Check if logged in
-if ($auth->isLoggedIn()) {
-    $user = $auth->getUser();
-}
-
-// Generate JWT Token
-$token = $auth->generateToken($user);</code></pre>
-            </section>
-
-            <hr class="opacity-10 my-5">
-
-            <!-- Validation -->
-            <section id="validation" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">Input Validation</h2>
-                    <p>NovaFlow includes a powerful Validator class for form and API input validation with customizable rules.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">ইনপুট ভ্যালিডেশন (Validation)</h2>
-                    <p>ফর্ম এবং API ইনপুট ভ্যালিডেশনের জন্য শক্তিশালী Validator ক্লাস আছে।</p>
-                </div>
-
-                <pre><code>use NovaFlow\Core\Validator;
-
-$validator = Validator::make($data = [
-    'name' => 'John',
-    'email' => 'john@example.com',
-    'password' => '123456'
-], $rules = [
-    'name' => 'required|min:3|max:50',
-    'email' => 'required|email|unique:users',
-    'password' => 'required|min:6'
-]);
-
-if ($validator->hasErrors()) {
-    $errors = $validator->errors();
-    return;
-}
-
-// In Controller (automatic redirect with flash)
-$this->validate([
-    'name' => 'required|min:3',
-    'email' => 'required|email'
-]);</code></pre>
-            </section>
-
-            <hr class="opacity-10 my-5">
-
-            <!-- File Upload -->
-            <section id="upload" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">File Upload Handler</h2>
-                    <p>Secure file upload with type validation, size limits, and automatic image processing.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">ফাইল আপলোড হ্যান��ডলার (File Upload)</h2>
-                    <p>টাইপ ভ্যালিডেশন, সাইজ লিমিট এবং অটোমেটিক ইমেজ প্রসেসিং সহ নিরাপদ ফাইল আপলোড।</p>
-                </div>
-
-                <pre><code>use NovaFlow\Core\UploadHandler;
-
-// Single file upload
-$upload = new UploadHandler();
-$result = $upload->upload('avatar');
-
-// Configure upload
-$upload = new UploadHandler('/public/uploads')
-    ->allowedTypes(['image/jpeg', 'image/png', 'image/webp'])
-    ->maxSize(2097152) // 2MB
-    ->generateNewName(true)
-    ->processImage(800, 600, 85); // Resize, max width/height, quality
-
-$result = $upload->upload('avatar');
-if ($result['success']) {
-    $filename = $result['filename'];
-    $path = $result['path'];
-}
-
-// Multiple file upload
-$results = $upload->uploadMultiple('attachments');</code></pre>
-            </section>
-
-            <hr class="opacity-10 my-5">
-
-            <!-- Pagination -->
-            <section id="pagination" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">Pagination</h2>
-                    <p>Easy pagination helper for lists and API responses.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">পেজিনেশন (Pagination)</h2>
-                    <p>লিস্ট এবং API রেসপন্সের জন্য সহজ পেজিনেশন হেল্পার।</p>
-                </div>
-
-                <pre><code>use NovaFlow\Core\Pagination;
-
-// In Controller
-$page = (int) request('page', 1);
-$perPage = 20;
-$total = UserModel::query()->count();
-$users = UserModel::query()
-    ->orderBy('id', 'DESC')
-    ->limit($perPage, ($page - 1) * $perPage)
-    ->get();
-
-$pagination = Pagination::make($total, $perPage, $page, '/admin/users');
-$html = $pagination->render();
-
-// Pass to view
-$this->view('admin.users', [
-    'users' => $users,
-    'pagination' => $html
-]);
-
-// API Response with Pagination
-ApiResponse::success([
-    'data' => $users,
-    'pagination' => $pagination->toArray()
-]);</code></pre>
-            </section>
-
-            <hr class="opacity-10 my-5">
-
-            <!-- Rate Limiting -->
-            <section id="rate-limit" class="docs-section">
-                <div class="lang-en">
-                    <h2 class="fw-bold text-dark mb-4">Rate Limiting</h2>
-                    <p>Protect your API from brute force attacks with rate limiting middleware.</p>
-                </div>
-                <div class="lang-bn">
-                    <h2 class="fw-bold text-dark mb-4">রেট লিমিটিং (Rate Limiting)</h2>
-                    <p>রেট লিমিটিং মিডলওয়্যার দিয়ে ব্রুট ফোর্স অ্যাটাক থেকে সুরক্ষা।</p>
-                </div>
-
-                <pre><code>// In routes.php
-$router->group(['middleware' => 'rate:login'], function($router) {
-    $router->post('/login', 'AuthApiController@login');
-});
-
-// Rate limit options: default, login, api, upload
-// default: 60 req/min
-// login: 5 attempts/5min
-// api: 100 req/min
-// upload: 10/hour
-
-// Custom rate limit
-$router->middleware('rate:default');</code></pre>
             </section>
 
             <hr class="opacity-10 my-5">

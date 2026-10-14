@@ -613,14 +613,6 @@
             </div>
         </div>
 
-        <!-- ব্যবহারকারী হইসেস -->
-        <div class="nav-section">
-            <a href="<?= BASE_URL ?>/admin/users" class="nav-link-item <?= str_contains($_SERVER['REQUEST_URI']??'', '/admin/users') ? 'active' : '' ?>">
-                <div class="nav-icon"><i class="fas fa-users"></i></div>
-                ব্যবহারকারী হইসেস
-            </a>
-        </div>
-
         <!-- সেটিংস -->
         <div class="nav-section">
             <a href="<?= BASE_URL ?>/admin/settings" class="nav-link-item <?= str_contains($_SERVER['REQUEST_URI']??'', '/admin/settings') ? 'active' : '' ?>">

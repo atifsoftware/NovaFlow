@@ -1,16 +1,20 @@
 {
     "name": "atifsoftware/novaflow",
-    "description": "A lightweight, high-performance PHP MVC framework with premium admin panel",
+    "description": "Ultra-fast, enterprise-grade PHP 8.2 MVC framework with Multi-DB Grammars, Transactions, S3 Storage, and Queue architecture",
+    "version": "2.0.0",
     "type": "project",
     "keywords": [
         "php",
         "framework",
         "mvc",
-        "novaFlow",
-        "admin-panel"
+        "novaflow",
+        "speed",
+        "transactions",
+        "s3-storage",
+        "queue-worker"
     ],
     "license": "MIT",
-    "homepage": "https://novaflow.dev",
+    "homepage": "https://github.com/atifsoftware/NovaFlow",
     "authors": [
         {
             "name": "Mohidul Hasan",
@@ -24,7 +28,7 @@
         "source": "https://github.com/atifsoftware/NovaFlow"
     },
     "require": {
-        "php": ">=8.1"
+        "php": ">=8.2"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.5"
@@ -32,10 +36,7 @@
     "autoload": {
         "psr-4": {
             "NovaFlow\\Core\\": "app/libraries/",
-            "App\\Controllers\\": "app/Controllers/",
-            "App\\Middleware\\": "app/Middleware/",
-            "App\\Models\\": "app/Models/",
-            "App\\Services\\": "app/Services/"
+            "App\\": "app/"
         }
     },
     "autoload-dev": {
@@ -44,20 +45,13 @@
         }
     },
     "scripts": {
-        "test": "phpunit",
-        "post-root-package-install": [
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
-        ]
+        "test": "phpunit"
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true,
     "config": {
         "sort-packages": true,
         "optimize-autoloader": true
-    },
-    "extra": {
-        "branch-alias": {
-            "dev-main": "1.0.x-dev"
-        }
     }
 }
+

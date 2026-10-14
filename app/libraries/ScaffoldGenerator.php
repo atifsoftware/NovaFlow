@@ -10,11 +10,12 @@ class ScaffoldGenerator
 {
     private $migrationsPath = BASE_PATH . '/app/database/migrations/';
     private $seedersPath = BASE_PATH . '/app/database/seeds/';
+    private $factoriesPath = BASE_PATH . '/app/database/factories/';
     private $testsPath = BASE_PATH . '/tests/';
 
     public function __construct()
     {
-        foreach ([$this->migrationsPath, $this->seedersPath, $this->testsPath] as $dir) {
+        foreach ([$this->migrationsPath, $this->seedersPath, $this->factoriesPath, $this->testsPath] as $dir) {
             if (!is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
@@ -64,13 +65,42 @@ class ScaffoldGenerator
         $targetFile = $this->seedersPath . $name . '.php';
 
         $content = "<?php\n\n";
+        $content .= "namespace App\Database\Seeds;\n\n";
+        $content .= "use NovaFlow\Core\Database\Seeder;\n";
         $content .= "use NovaFlow\Core\DB;\n\n";
-        $content .= "class {$name}\n";
+        $content .= "class {$name} extends Seeder\n";
         $content .= "{\n";
         $content .= "    /**\n     * Run the database seeds.\n     */\n";
-        $content .= "    public function run()\n";
+        $content .= "    public function run(): void\n";
         $content .= "    {\n";
-        $content .= "        // Example: DB::table('users')->insert(['name' => 'Admin', 'email' => 'admin@example.com']);\n";
+        $content .= "        // Example: DB::table('users')->insert(['name' => 'Admin', 'created_at' => date('Y-m-d H:i:s')]);\n";
+        $content .= "    }\n";
+        $content .= "}\n";
+
+        file_put_contents($targetFile, $content);
+        return $name;
+    }
+
+    /**
+     * Create a new model factory file
+     */
+    public function createFactory(string $name): string
+    {
+        $name = ucfirst(str_replace('Factory', '', $name)) . 'Factory';
+        $targetFile = $this->factoriesPath . $name . '.php';
+
+        $content = "<?php\n\n";
+        $content .= "namespace App\Database\Factories;\n\n";
+        $content .= "use NovaFlow\Core\Database\Factory;\n\n";
+        $content .= "class {$name} extends Factory\n";
+        $content .= "{\n";
+        $content .= "    /**\n     * Define model default attributes\n     */\n";
+        $content .= "    public function definition(): array\n";
+        $content .= "    {\n";
+        $content .= "        return [\n";
+        $content .= "            'name' => 'Sample Item ' . rand(100, 999),\n";
+        $content .= "            'created_at' => date('Y-m-d H:i:s'),\n";
+        $content .= "        ];\n";
         $content .= "    }\n";
         $content .= "}\n";
 

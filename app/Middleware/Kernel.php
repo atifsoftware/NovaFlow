@@ -25,7 +25,7 @@ class Kernel
      */
     public static array $groups = [
         'web' => [
-            'csrf',
+            // Add web-specific middlewares here
         ],
         'api' => [
             'api', // Refers to the alias below
@@ -36,14 +36,14 @@ class Kernel
      * Short names for middleware classes
      */
     public static array $aliases = [
-        'auth'      => AuthMiddleware::class,
-        'guest'     => GuestMiddleware::class,
+        'auth'     => AuthMiddleware::class,
+        'guest'    => GuestMiddleware::class,
         'admin'    => AdminMiddleware::class,
         'api'      => ApiAuthMiddleware::class,
         'role'     => RoleMiddleware::class,
         'log'      => LogRequestMiddleware::class,
-        'rate'     => RateLimitMiddleware::class,
-        'csrf'     => \NovaFlow\Core\CSRFMiddleware::class,
+        'cors'     => CorsMiddleware::class,
+        'throttle' => ThrottleRequestsMiddleware::class,
     ];
 
     /**

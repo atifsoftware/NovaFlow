@@ -3,18 +3,20 @@
  * NovaFlow MVC — Application Bootstrap
  */
 
-// 1. Directory & Filesystem Setup
-$dirs = [
-    dirname(__DIR__) . '/public/assets/css',
-    dirname(__DIR__) . '/public/assets/js',
-    dirname(__DIR__) . '/public/assets/images',
-    dirname(__DIR__) . '/public/uploads',
-    dirname(__DIR__) . '/logs',
-];
+// 1. Directory & Filesystem Setup (Run once on initial setup, skipped during fast request routing)
+if (!is_dir(dirname(__DIR__) . '/public/uploads')) {
+    $dirs = [
+        dirname(__DIR__) . '/public/assets/css',
+        dirname(__DIR__) . '/public/assets/js',
+        dirname(__DIR__) . '/public/assets/images',
+        dirname(__DIR__) . '/public/uploads',
+        dirname(__DIR__) . '/logs',
+    ];
 
-foreach ($dirs as $dir) {
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    foreach ($dirs as $dir) {
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
     }
 }
 

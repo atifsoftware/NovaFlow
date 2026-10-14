@@ -2,9 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Services\AuthService;
+use App\Models\UserModel;
 use NovaFlow\Core\Controller;
-use NovaFlow\Core\Flash;
 
 /**
  * AuthController
@@ -12,22 +11,14 @@ use NovaFlow\Core\Flash;
  */
 class AuthController extends Controller
 {
-    protected AuthService $authService;
-
-    public function __construct(AuthService $authService)
-    {
-        $this->authService = $authService;
-        parent::__construct();
-    }
-
-    public function checkAuth(): void {}
+    public function checkAuth(): void {} // Public accessibility
 
     /**
      * Show login form
      */
     public function login(): void
     {
-        if ($this->authService->isLoggedIn()) {
+        if ($this->isLoggedIn()) {
             $this->redirect('/admin/dashboard');
         }
 
@@ -41,33 +32,25 @@ class AuthController extends Controller
      */
     public function postLogin(): void
     {
-        $data = [
-            'email' => $this->post('email'),
-            'password' => $this->post('password')
-        ];
+        $email    = $this->post('email');
+        $password = $this->post('password');
 
-        // Validation using Validator class
-        $validator = \NovaFlow\Core\Validator::make($data, [
-            'email' => 'required|email',
-            'password' => 'required|min:6'
-        ], [], [
-            'email' => 'ইমেইল',
-            'password' => 'পাসওয়ার্ড'
-        ]);
-
-        if (!$validator->validate()) {
-            Flash::error($validator->firstError(array_key_first($validator->errors())));
+        if (empty($email) || empty($password)) {
+            flash('error', 'সবগুলো ঘর পূরণ করুন।');
             $this->redirect('/login');
         }
 
-        $remember = $this->post('remember') === 'on';
-        $result = $this->authService->login($data['email'], $data['password'], $remember);
+        $user = UserModel::authenticate($email, $password);
 
-        if ($result['success']) {
-            Flash::success('লগইন সফল হয়েছে!');
+        if ($user) {
+            $_SESSION['user_id']   = $user->id;
+            $_SESSION['user_name'] = $user->name;
+            $_SESSION['user_role'] = $user->role ?? 'user';
+            
+            flash('success', 'লগইন সফল হয়েছে!');
             $this->redirect('/admin/dashboard');
         } else {
-            Flash::error($result['message']);
+            flash('error', 'ভুল ইমেইল বা পাসওয়ার্ড।');
             $this->redirect('/login');
         }
     }
@@ -77,56 +60,13 @@ class AuthController extends Controller
      */
     public function logout(): void
     {
-        $this->authService->logout();
+        session_unset();
+        session_destroy();
         $this->redirect('/login');
     }
 
-    /**
-     * Show registration form
-     */
-    public function register(): void
+    private function isLoggedIn(): bool
     {
-        $this->view('auth.register', [
-            'title' => 'রেজিস্টার — NovaFlow'
-        ], 'auth');
-    }
-
-    /**
-     * Handle registration
-     */
-    public function postRegister(): void
-    {
-        $data = [
-            'name' => $this->post('name'),
-            'email' => $this->post('email'),
-            'password' => $this->post('password'),
-            'password_confirmation' => $this->post('confirm_password')
-        ];
-
-        // Validation using Validator class
-        $validator = \NovaFlow\Core\Validator::make($data, [
-            'name' => 'required|min:3|max:100',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed'
-        ], [], [
-            'name' => 'নাম',
-            'email' => 'ইমেইল',
-            'password' => 'পাসওয়ার্ড'
-        ]);
-
-        if (!$validator->validate()) {
-            Flash::error($validator->firstError(array_key_first($validator->errors())));
-            $this->redirect('/register');
-        }
-
-        $result = $this->authService->register($data);
-
-        if ($result['success']) {
-            Flash::success('রেজিস্ট্রেশন সফল! অনুগ্রহ করে লগইন করুন।');
-            $this->redirect('/login');
-        } else {
-            Flash::error($result['message']);
-            $this->redirect('/register');
-        }
+        return isset($_SESSION['user_id']);
     }
 }

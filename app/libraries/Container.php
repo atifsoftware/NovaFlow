@@ -7,8 +7,6 @@ use Exception;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionParameter;
-use ReflectionFunction;
-use ReflectionNamedType;
 
 /**
  * Service Container (IoC)
@@ -19,7 +17,6 @@ class Container
     protected static $instance;
     protected $bindings = [];
     protected $instances = [];
-    protected $aliases = [];
 
     /**
      * Get singleton instance of the container
@@ -42,6 +39,7 @@ class Container
         }
 
         $this->bindings[$abstract] = compact('concrete', 'shared');
+        unset($this->instances[$abstract]);
     }
 
     /**
@@ -53,7 +51,7 @@ class Container
     }
 
     /**
-     * Register an existing instance as shared
+     * Register an existing instance as shared in the container
      */
     public function instance($abstract, $instance)
     {
@@ -62,11 +60,19 @@ class Container
     }
 
     /**
-     * Alias a type to a different name
+     * Remove a resolved instance from the container
      */
-    public function alias($abstract, $alias)
+    public function forgetInstance($abstract): void
     {
-        $this->aliases[$alias] = $abstract;
+        unset($this->instances[$abstract]);
+    }
+
+    /**
+     * Determine if the given abstract type has been bound or resolved
+     */
+    public function has($abstract): bool
+    {
+        return isset($this->bindings[$abstract]) || isset($this->instances[$abstract]);
     }
 
     /**
@@ -74,8 +80,6 @@ class Container
      */
     public function make($abstract, array $parameters = [])
     {
-        $abstract = $this->getAlias($abstract);
-
         // If it's a singleton and already instantiated, return it
         if (isset($this->instances[$abstract])) {
             return $this->instances[$abstract];
@@ -98,28 +102,6 @@ class Container
     }
 
     /**
-     * Get an instance from the container (PSR-11)
-     */
-    public function get($id)
-    {
-        try {
-            return $this->make($id);
-        } catch (Exception $e) {
-            throw new Exception("Target [$id] is not resolvable. " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Check if the given abstract type has been bound or aliased (PSR-11)
-     */
-    public function has($abstract)
-    {
-        return isset($this->bindings[$abstract]) || 
-               isset($this->instances[$abstract]) || 
-               isset($this->aliases[$abstract]);
-    }
-
-    /**
      * Check if a type is shared
      */
     protected function isShared($abstract)
@@ -137,14 +119,6 @@ class Container
         }
 
         return $abstract;
-    }
-
-    /**
-     * Get the abstract for an alias
-     */
-    protected function getAlias($abstract)
-    {
-        return isset($this->aliases[$abstract]) ? $this->getAlias($this->aliases[$abstract]) : $abstract;
     }
 
     /**
@@ -217,13 +191,9 @@ class Container
     {
         $type = $parameter->getType();
 
-        if (is_null($type) || $type->isBuiltin() || !$type instanceof ReflectionNamedType) {
+        if (is_null($type) || $type->isBuiltin()) {
             if ($parameter->isDefaultValueAvailable()) {
                 return $parameter->getDefaultValue();
-            }
-
-            if ($parameter->allowsNull()) {
-                return null;
             }
 
             throw new Exception("Unresolvable dependency [{$parameter->name}] in class {$parameter->getDeclaringClass()->getName()}");

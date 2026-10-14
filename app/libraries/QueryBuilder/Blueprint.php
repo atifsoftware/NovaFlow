@@ -45,6 +45,32 @@ class Blueprint
         return $this->addColumn($column, 'TEXT');
     }
 
+    public function decimal($column, $total = 8, $places = 2)
+    {
+        return $this->addColumn($column, "DECIMAL($total, $places)");
+    }
+
+    public function float($column, $total = 8, $places = 2)
+    {
+        return $this->addColumn($column, "FLOAT");
+    }
+
+    public function double($column)
+    {
+        return $this->addColumn($column, "DOUBLE");
+    }
+
+    public function json($column)
+    {
+        return $this->addColumn($column, "JSON");
+    }
+
+    public function enum($column, array $allowed)
+    {
+        $values = implode("', '", array_map('addslashes', $allowed));
+        return $this->addColumn($column, "ENUM('$values')");
+    }
+
     public function boolean($column)
     {
         return $this->addColumn($column, 'TINYINT(1)');
@@ -106,8 +132,27 @@ class Blueprint
         $this->commands[] = "DROP COLUMN `$column`";
     }
 
-    public function toSql()
+    public function getTable(): string
     {
+        return $this->table;
+    }
+
+    public function getColumns(): array
+    {
+        return $this->columns;
+    }
+
+    public function getCommands(): array
+    {
+        return $this->commands;
+    }
+
+    public function toSql(?\NovaFlow\Core\Database\Schema\Grammar\SchemaGrammar $grammar = null)
+    {
+        if ($grammar) {
+            return $grammar->compileCreate($this);
+        }
+
         $cols = [];
         foreach ($this->columns as $col) {
             $cols[] = $col->toSql();
@@ -145,6 +190,26 @@ class FluentColumn
     protected $default = null;
     protected $isAlter = false;
     protected $parent;
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function isNullable(): bool
+    {
+        return $this->nullable;
+    }
+
+    public function getDefault(): mixed
+    {
+        return $this->default;
+    }
 
     public function __construct($name, $type, $isAlter = false, $parent = null)
     {

@@ -162,29 +162,6 @@ class Request
     }
 
     /**
-     * Get request header value
-     */
-    public static function header(string $name, ?string $default = null): ?string
-    {
-        $name = str_replace('-', '_', strtoupper($name));
-        if (isset($_SERVER['HTTP_' . $name])) {
-            return $_SERVER['HTTP_' . $name];
-        }
-        if (in_array($name, ['CONTENT_TYPE', 'CONTENT_LENGTH']) && isset($_SERVER[$name])) {
-            return $_SERVER[$name];
-        }
-        if (function_exists('apache_request_headers')) {
-            $headers = apache_request_headers();
-            foreach ($headers as $key => $val) {
-                if (strcasecmp($key, str_replace('_', '-', $name)) === 0) {
-                    return $val;
-                }
-            }
-        }
-        return $default;
-    }
-
-    /**
      * Auth User helpers
      */
     public static function setUser($user) { self::$user = $user; }

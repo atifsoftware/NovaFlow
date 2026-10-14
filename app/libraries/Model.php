@@ -25,34 +25,11 @@ abstract class Model implements JsonSerializable
     public $exists = false;
 
     /**
-     * Get all records
+     * Get the primary key for the model
      */
-    public static function all(): array
+    public function getPrimaryKey(): string
     {
-        return static::query()->get();
-    }
-
-    /**
-     * Lazy load relationships
-     */
-    public function load(string $relation): self
-    {
-        $method = 'get' . ucfirst($relation);
-        if (method_exists($this, $method)) {
-            $this->$relation = $this->$method();
-        }
-        return $this;
-    }
-
-    /**
-     * Load multiple relationships
-     */
-    public function loadMany(array $relations): self
-    {
-        foreach ($relations as $relation) {
-            $this->load($relation);
-        }
-        return $this;
+        return $this->primaryKey;
     }
 
     // Soft delete support
@@ -68,9 +45,7 @@ abstract class Model implements JsonSerializable
     public function fill(array $attributes)
     {
         foreach ($attributes as $key => $value) {
-            if (empty($this->allowedFields) || in_array($key, $this->allowedFields) || $key === $this->primaryKey) {
-                $this->attributes[$key] = $value;
-            }
+            $this->attributes[$key] = $value;
         }
         return $this;
     }

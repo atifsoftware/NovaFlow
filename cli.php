@@ -9,17 +9,23 @@
 define('BASE_PATH', __DIR__);
 
 // 1. Initialise Autoloader & Helpers
+require_once BASE_PATH . '/app/libraries/Autoloader.php';
+require_once BASE_PATH . '/app/libraries/helpers.php';
 if (file_exists(BASE_PATH . '/vendor/autoload.php')) {
     require_once BASE_PATH . '/vendor/autoload.php';
 }
-require_once BASE_PATH . '/app/libraries/helpers.php';
 
-// 2. Load Environment first so it is available to Config
-if (class_exists('NovaFlow\Core\Dotenv')) {
-    \NovaFlow\Core\Dotenv::load(BASE_PATH . '/.env');
-}
+Autoloader::register();
+Autoloader::addNamespace('NovaFlow\Core', BASE_PATH . '/app/libraries');
+Autoloader::addNamespace('App\Controllers', BASE_PATH . '/app/controllers');
+Autoloader::addNamespace('App\Models', BASE_PATH . '/app/models');
+Autoloader::addNamespace('App\Database\Seeds', BASE_PATH . '/app/database/seeds');
+Autoloader::addNamespace('App\Database\Factories', BASE_PATH . '/app/database/factories');
+Autoloader::addNamespace('App\Events', BASE_PATH . '/app/events');
+Autoloader::addNamespace('App\Listeners', BASE_PATH . '/app/listeners');
 
-// 3. Load Configuration
+// 2. Load Configuration & Environment
+if (class_exists('NovaFlow\Core\Dotenv')) \NovaFlow\Core\Dotenv::load(BASE_PATH . '/.env');
 if (file_exists(BASE_PATH . '/config/config.php')) require_once BASE_PATH . '/config/config.php';
 if (file_exists(BASE_PATH . '/config/database.php')) require_once BASE_PATH . '/config/database.php';
 
@@ -100,6 +106,9 @@ class CLI
             echo "11. " . $this->color("Start Queue Worker", 'cyan') . "\n";
             echo "12. " . $this->color("Master CRUD Scaffold", 'bold') . "\n";
             echo "13. " . $this->color("Run Pending Migrations", 'magenta') . "\n";
+            echo "14. " . $this->color("Run Database Seeders", 'magenta') . "\n";
+            echo "15. " . $this->color("Generate Model Factory", 'green') . "\n";
+            echo "16. " . $this->color("Interactive Tinker Shell (REPL)", 'cyan') . "\n";
             echo "0. " . $this->color("Exit", 'red') . "\n";
             echo "\n";
 
@@ -144,6 +153,15 @@ class CLI
                     break;
                 case '13':
                     $this->runMigrations();
+                    break;
+                case '14':
+                    $this->runSeeders();
+                    break;
+                case '15':
+                    $this->generateFactory();
+                    break;
+                case '16':
+                    $this->startTinker();
                     break;
                 case '0':
                     echo $this->color("\n✓ Goodbye From NovaFlow!\n\n", 'green');
@@ -203,21 +221,6 @@ class CLI
         $this->pause();
     }
 
-    private function viewRoutes()
-    {
-        echo $this->color("\nRegistered Routes:\n", 'bold');
-        echo str_pad("Method", 10) . str_pad("Path", 40) . "Middlewares\n";
-        echo str_repeat("-", 80) . "\n";
-
-        foreach ($this->router->getRoutes() as $method => $paths) {
-            foreach ($paths as $path => $info) {
-                $mw = !empty($info['middleware']) ? implode(', ', $info['middleware']) : 'None';
-                echo str_pad(strtoupper($method), 10) . str_pad($path, 40) . $mw . "\n";
-            }
-        }
-        $this->pause();
-    }
-
     private function createMigration()
     {
         $tableName = $this->input("Enter table name (e.g. products)");
@@ -229,43 +232,6 @@ class CLI
                 echo $this->color("\n✗ Error: " . $e->getMessage() . "\n", 'red');
             }
         }
-        $this->pause();
-    }
-
-    private function systemHealthCheck()
-    {
-        echo $this->color("\nNovaFlow System Health Check:\n", 'bold');
-
-        // 1. PHP Version
-        $phpOk = version_compare(PHP_VERSION, '8.1.0', '>=');
-        $this->printCheck("PHP Version (>= 8.1)", PHP_VERSION, $phpOk);
-
-        // 2. Extensions
-        $reqExts = ['pdo', 'mysqlnd', 'curl', 'openssl', 'mbstring', 'json'];
-        foreach ($reqExts as $ext) {
-            $this->printCheck("Extension: $ext", extension_loaded($ext) ? "Loaded" : "Missing", extension_loaded($ext));
-        }
-
-        // 3. Writable Dirs
-        $dirs = ['logs', 'public/uploads'];
-        foreach ($dirs as $dir) {
-            $path = BASE_PATH . '/' . $dir;
-            $isWritable = is_dir($path) && is_writable($path);
-            $this->printCheck("Writable: $dir", $isWritable ? "Yes" : "No", $isWritable);
-        }
-
-        // 4. Database Connection
-        try {
-            $db = Container::getInstance()->make(DatabaseInterface::class);
-            $db->query("SELECT 1");
-            $this->printCheck("Database Connection", "Connected", true);
-        } catch (\Exception $e) {
-            $this->printCheck("Database Connection", "Failed: " . $e->getMessage(), false);
-        }
-
-        // 5. Environment
-        $this->printCheck(".env File", file_exists(BASE_PATH . '/.env') ? "Exists" : "Missing", file_exists(BASE_PATH . '/.env'));
-
         $this->pause();
     }
 
@@ -373,7 +339,7 @@ class CLI
         $this->pause();
     }
 
-    private function runMigrations()
+    public function runMigrations(bool $pause = true)
     {
         echo $this->color("\nChecking for pending migrations...\n", 'bold');
         try {
@@ -389,7 +355,186 @@ class CLI
         } catch (\Exception $e) {
             echo $this->color("\n✗ Error: " . $e->getMessage() . "\n", 'red');
         }
+        if ($pause) $this->pause();
+    }
+
+    public function runSeeders(?string $class = null, bool $pause = true)
+    {
+        echo $this->color("\nSeeding database...\n", 'bold');
+        $startTime = microtime(true);
+        try {
+            $targetClass = $class ?: 'App\\Database\\Seeds\\DatabaseSeeder';
+
+            if (!class_exists($targetClass)) {
+                // Try short name without namespace
+                $altClass = 'App\\Database\\Seeds\\' . $class;
+                if (class_exists($altClass)) {
+                    $targetClass = $altClass;
+                } else {
+                    echo $this->color("✗ Seeder class '{$targetClass}' not found!\n", 'red');
+                    if ($pause) $this->pause();
+                    return;
+                }
+            }
+
+            $seeder = new $targetClass();
+            $seeder->run();
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
+            echo $this->color("✓ Database seeded successfully with {$targetClass} ({$duration}ms)!\n", 'green');
+        } catch (\Throwable $e) {
+            echo $this->color("✗ Seeder failed: " . $e->getMessage() . "\n", 'red');
+        }
+        if ($pause) $this->pause();
+    }
+
+    private function generateFactory()
+    {
+        $name = $this->input("Enter model name for factory (e.g. Product)");
+        if ($name) {
+            try {
+                $file = $this->scaffold->createFactory($name);
+                echo $this->color("\n✓ Factory '{$file}' created in app/database/factories/\n", 'green');
+            } catch (\Exception $e) {
+                echo $this->color("\n✗ Error: " . $e->getMessage() . "\n", 'red');
+            }
+        }
         $this->pause();
+    }
+
+    public function startTinker()
+    {
+        $tinker = new \NovaFlow\Core\Console\Tinker();
+        $tinker->start();
+    }
+
+    public function handleArgs(array $argv)
+    {
+        $cmd = $argv[1] ?? null;
+        if (!$cmd) {
+            $this->run();
+            return;
+        }
+
+        switch ($cmd) {
+            case 'tinker':
+                $this->startTinker();
+                break;
+            case 'migrate':
+                $this->runMigrations(false);
+                break;
+            case 'db:seed':
+                $class = null;
+                foreach (array_slice($argv, 2) as $arg) {
+                    if (str_starts_with($arg, '--class=')) {
+                        $class = substr($arg, 8);
+                    } elseif (!str_starts_with($arg, '-')) {
+                        $class = $arg;
+                    }
+                }
+                $this->runSeeders($class, false);
+                break;
+            case 'make:seeder':
+                $name = $argv[2] ?? null;
+                if (!$name) {
+                    echo $this->color("Usage: php cli.php make:seeder <Name>\n", 'yellow');
+                    exit(1);
+                }
+                $res = $this->scaffold->createSeeder($name);
+                echo $this->color("✓ Seeder '{$res}' created in app/database/seeds/\n", 'green');
+                break;
+            case 'make:factory':
+                $name = $argv[2] ?? null;
+                if (!$name) {
+                    echo $this->color("Usage: php cli.php make:factory <ModelName>\n", 'yellow');
+                    exit(1);
+                }
+                $res = $this->scaffold->createFactory($name);
+                echo $this->color("✓ Factory '{$res}' created in app/database/factories/\n", 'green');
+                break;
+            case 'make:migration':
+                $table = $argv[2] ?? null;
+                if (!$table) {
+                    echo $this->color("Usage: php cli.php make:migration <TableName>\n", 'yellow');
+                    exit(1);
+                }
+                $res = $this->scaffold->createMigration($table);
+                echo $this->color("✓ Migration '{$res}' created in app/database/migrations/\n", 'green');
+                break;
+            case 'make:model':
+                $table = $argv[2] ?? null;
+                if (!$table) {
+                    echo $this->color("Usage: php cli.php make:model <TableName>\n", 'yellow');
+                    exit(1);
+                }
+                $res = $this->generator->generateModel($table);
+                echo $this->color("✓ Model '{$res}' generated in app/models/\n", 'green');
+                break;
+            case 'routes':
+                $this->viewRoutes(false);
+                break;
+            case 'health':
+                $this->systemHealthCheck(false);
+                break;
+            case 'queue:work':
+                $this->startQueueWorker();
+                break;
+            case 'cache:clear':
+                \NovaFlow\Core\Cache::clear();
+                echo $this->color("✓ Cache cleared successfully!\n", 'green');
+                break;
+            default:
+                echo $this->color("Unknown command: {$cmd}\n", 'red');
+                echo "Available commands:\n";
+                echo "  tinker, migrate, db:seed, make:seeder, make:factory, make:migration, make:model, routes, health, queue:work, cache:clear\n";
+                exit(1);
+        }
+    }
+
+    public function viewRoutes(bool $pause = true)
+    {
+        echo $this->color("\nRegistered Routes:\n", 'bold');
+        echo str_pad("Method", 10) . str_pad("Path", 40) . "Middlewares\n";
+        echo str_repeat("-", 80) . "\n";
+
+        foreach ($this->router->getRoutes() as $method => $paths) {
+            foreach ($paths as $path => $info) {
+                $mw = !empty($info['middleware']) ? implode(', ', $info['middleware']) : 'None';
+                echo str_pad(strtoupper($method), 10) . str_pad($path, 40) . $mw . "\n";
+            }
+        }
+        if ($pause) $this->pause();
+    }
+
+    public function systemHealthCheck(bool $pause = true)
+    {
+        echo $this->color("\nNovaFlow System Health Check:\n", 'bold');
+
+        $phpOk = version_compare(PHP_VERSION, '8.1.0', '>=');
+        $this->printCheck("PHP Version (>= 8.1)", PHP_VERSION, $phpOk);
+
+        $reqExts = ['pdo', 'mysqlnd', 'curl', 'openssl', 'mbstring', 'json'];
+        foreach ($reqExts as $ext) {
+            $this->printCheck("Extension: $ext", extension_loaded($ext) ? "Loaded" : "Missing", extension_loaded($ext));
+        }
+
+        $dirs = ['logs', 'public/uploads'];
+        foreach ($dirs as $dir) {
+            $path = BASE_PATH . '/' . $dir;
+            $isWritable = is_dir($path) && is_writable($path);
+            $this->printCheck("Writable: $dir", $isWritable ? "Yes" : "No", $isWritable);
+        }
+
+        try {
+            $db = Container::getInstance()->make(DatabaseInterface::class);
+            $db->query("SELECT 1");
+            $this->printCheck("Database Connection", "Connected", true);
+        } catch (\Exception $e) {
+            $this->printCheck("Database Connection", "Failed: " . $e->getMessage(), false);
+        }
+
+        $this->printCheck(".env File", file_exists(BASE_PATH . '/.env') ? "Exists" : "Missing", file_exists(BASE_PATH . '/.env'));
+
+        if ($pause) $this->pause();
     }
 
     private function input($prompt)
@@ -425,7 +570,7 @@ class CLI
 
 if (php_sapi_name() === 'cli') {
     $cli = new CLI();
-    $cli->run();
+    $cli->handleArgs($argv ?? []);
 } else {
     echo "This script must be run from command line.\n";
 }

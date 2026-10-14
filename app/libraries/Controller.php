@@ -7,10 +7,18 @@ namespace NovaFlow\Core;
  */
 abstract class Controller
 {
+    /**
+     * Set this to true in child controllers to skip CSRF validation for specific cases
+     */
+    protected bool $skipCsrf = false;
     protected array $middlewares = [];
 
     public function __construct()
     {
+        // Automatically validate CSRF for all POST requests
+        if (!$this->skipCsrf && Request::isPost()) {
+            $this->validateCsrf();
+        }
     }
 
     /**
@@ -51,6 +59,9 @@ abstract class Controller
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
         exit;
     }
 
@@ -89,24 +100,30 @@ abstract class Controller
         }
     }
 
-    protected function input(string $key, mixed $default = null): mixed
+    /**
+     * CSRF চেক করার মেথড
+     */
+    protected function validateCsrf(): void
     {
-        return Request::input($key, $default);
-    }
-
-    protected function all(): array
-    {
-        return Request::all();
-    }
-
-    protected function file(string $key): ?array
-    {
-        return Request::file($key);
-    }
-
-    protected function has(string $key): bool
-    {
-        return !empty(Request::input($key));
+        $token = $this->post('_token');
+        if (!$token) {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        }
+        
+        if (!Security::validateCSRFToken($token)) {
+            // Log the failure for security monitoring
+            error_log("CSRF validation failed for user ID: " . $this->getUserId() . " from IP: " . Request::ip());
+            
+            if (Request::isAjax()) {
+                $this->json(['error' => 'Invalid CSRF Token. Please refresh the page.'], 403);
+            }
+            
+            die('<div style="font-family:sans-serif;padding:2rem;color:red;text-align:center;">
+                <h2>নিরাপত্তা ত্রুটি (CSRF Error)</h2>
+                <p>পেইজটি রিলোড দিয়ে আবার চেষ্টা করুন।</p>
+                <a href="javascript:location.reload()" style="color:blue;">Reload Page</a>
+            </div>');
+        }
     }
 
     public function checkAuth(): void
