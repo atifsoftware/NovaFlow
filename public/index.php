@@ -24,6 +24,7 @@ Autoloader::addNamespace('App\Controllers', dirname(__DIR__) . '/app/controllers
 Autoloader::addNamespace('App\Models', dirname(__DIR__) . '/app/models');
 Autoloader::addNamespace('App\Middleware', dirname(__DIR__) . '/app/middleware');
 Autoloader::addNamespace('App\Services', dirname(__DIR__) . '/app/services');
+Autoloader::addNamespace('App\Modules', dirname(__DIR__) . '/app/Modules');
 
 // 2. Load Environment
 \NovaFlow\Core\Dotenv::load(dirname(__DIR__) . '/.env');

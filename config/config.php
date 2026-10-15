@@ -39,6 +39,7 @@ if (!defined('SESSION_LIFETIME')) {
 // Path Constants
 if (!defined('APP_PATH')) define('APP_PATH', dirname(__DIR__) . '/app');
 if (!defined('VIEW_PATH')) define('VIEW_PATH', APP_PATH . '/views');
+if (!defined('MODULES_PATH')) define('MODULES_PATH', APP_PATH . '/Modules');
 if (!defined('UPLOAD_PATH')) define('UPLOAD_PATH', dirname(__DIR__) . '/public/uploads');
 
 // Default Controller & Method
