@@ -115,11 +115,78 @@
             color: #fff;
         }
 
-        /* Modern Footer */
+        /* Ultra-Modern Dark Footer */
         .nf-footer {
-            background: #080b12;
-            border-top: 1px solid var(--nf-dark-border);
-            color: var(--nf-text-muted);
+            background: linear-gradient(180deg, rgba(13, 17, 28, 0.95) 0%, #060911 100%);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            color: #94a3b8;
+        }
+        .nf-footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.5), rgba(6, 182, 212, 0.5), transparent);
+        }
+        .nf-footer-link {
+            color: #94a3b8 !important;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nf-footer-link:hover {
+            color: #ffffff !important;
+            transform: translateY(-2px);
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+        .nf-footer-desc {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .nf-footer-subtext {
+            color: #64748b;
+            font-size: 0.84rem;
+        }
+        .nf-footer-badge {
+            background: rgba(34, 197, 94, 0.12);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.25);
+            border-radius: 50rem;
+            padding: 4px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nf-pulse-dot {
+            width: 7px;
+            height: 7px;
+            background: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
+            display: inline-block;
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        .nf-footer-tech {
+            color: #64748b;
+            font-size: 0.82rem;
+            font-family: 'Fira Code', monospace;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
     </style>
 </head>
@@ -152,7 +219,7 @@
                         <a class="nf-nav-link" href="<?= BASE_URL ?>/api/docs"><i class="fas fa-code me-1"></i> API Docs</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nf-nav-link" href="#benchmarks"><i class="fas fa-gauge-high me-1 text-warning"></i> বেঞ্চমার্ক</a>
+                        <a class="nf-nav-link" href="<?= BASE_URL ?>/#benchmarks"><i class="fas fa-gauge-high me-1 text-warning"></i> বেঞ্চমার্ক</a>
                     </li>
                     <li class="nav-item ms-lg-2">
                         <?php if (current_lang() === 'bn'): ?>
@@ -184,37 +251,50 @@
     <!-- Sleek Modern Footer -->
     <footer class="nf-footer py-5 mt-5">
         <div class="container">
-            <div class="row g-4 align-items-center pb-4 border-bottom border-secondary border-opacity-25">
+            <div class="row g-4 align-items-center pb-4" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
                 <div class="col-md-6 text-center text-md-start">
                     <a class="nf-brand mb-2" href="<?= BASE_URL ?>/">
-                        <div class="d-inline-flex align-items-center justify-content-center bg-danger rounded-3" style="width: 28px; height: 28px;">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-danger rounded-3" style="width: 30px; height: 30px; box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4);">
                             <i class="fas fa-bolt text-white fs-6"></i>
                         </div>
                         Nova<span class="highlight">Flow</span>
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill ms-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">v2.1.0</span>
                     </a>
-                    <p class="small text-muted mb-0" style="max-width: 420px;">
+                    <p class="nf-footer-desc mb-0" style="max-width: 440px;">
                         Enterprise-Grade Modern PHP 8.2 MVC Framework. Built for speed, high scalability, and clean modular ERP development.
                     </p>
                 </div>
                 <div class="col-md-6 text-center text-md-end">
-                    <div class="d-inline-flex gap-3">
-                        <a href="<?= BASE_URL ?>/docs" class="text-secondary text-decoration-none small hover-white">Documentation</a>
-                        <span class="text-secondary opacity-50">•</span>
-                        <a href="<?= BASE_URL ?>/api/docs" class="text-secondary text-decoration-none small hover-white">API Explorer</a>
-                        <span class="text-secondary opacity-50">•</span>
-                        <a href="https://github.com/atifsoftware/NovaFlow" target="_blank" class="text-secondary text-decoration-none small hover-white">GitHub Repo</a>
+                    <div class="d-inline-flex flex-wrap justify-content-center justify-content-md-end gap-3 gap-lg-4">
+                        <a href="<?= BASE_URL ?>/" class="nf-footer-link">
+                            <i class="fas fa-home text-muted"></i> <?= __('home', 'হোম') ?>
+                        </a>
+                        <a href="<?= BASE_URL ?>/docs" class="nf-footer-link">
+                            <i class="fas fa-book text-danger"></i> <?= __('docs', 'ডকুমেন্টেশন') ?>
+                        </a>
+                        <a href="<?= BASE_URL ?>/api/docs" class="nf-footer-link">
+                            <i class="fas fa-code text-info"></i> API Explorer
+                        </a>
+                        <a href="<?= BASE_URL ?>/#benchmarks" class="nf-footer-link">
+                            <i class="fas fa-gauge-high text-warning"></i> বেঞ্চমার্ক
+                        </a>
+                        <a href="https://github.com/atifsoftware/NovaFlow" target="_blank" class="nf-footer-link">
+                            <i class="fab fa-github text-white"></i> GitHub
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="row pt-4 align-items-center">
-                <div class="col-md-6 text-center text-md-start small text-secondary">
-                    &copy; <?= date('Y') ?> NovaFlow Framework. Open source under MIT License.
+            <div class="row pt-4 align-items-center g-3">
+                <div class="col-md-6 text-center text-md-start nf-footer-subtext">
+                    &copy; <?= date('Y') ?> <strong class="text-white">NovaFlow Framework</strong>. Released as open-source under <span class="text-secondary">MIT License</span>.
                 </div>
-                <div class="col-md-6 text-center text-md-end small text-secondary">
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 me-2">
-                        <i class="fas fa-circle-check me-1"></i> System Healthy
+                <div class="col-md-6 text-center text-md-end d-flex flex-wrap justify-content-center justify-content-md-end align-items-center gap-3">
+                    <span class="nf-footer-badge">
+                        <span class="nf-pulse-dot"></span> System Healthy
                     </span>
-                    <span>PHP 8.2+ • MySQL • Postgres • SQLite</span>
+                    <span class="nf-footer-tech">
+                        <i class="fas fa-microchip text-danger"></i> PHP 8.2+ • MySQL • Postgres • SQLite
+                    </span>
                 </div>
             </div>
         </div>
