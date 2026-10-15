@@ -97,4 +97,20 @@ class SecurityTest extends TestCase
         $decrypted = Security::decrypt($tampered, 'key1');
         $this->assertFalse($decrypted);
     }
+
+    public function testRequestHeaderParsing(): void
+    {
+        $_SERVER['HTTP_X_CUSTOM_HEADER'] = 'test-val';
+        $val = \NovaFlow\Core\Request::header('X-Custom-Header');
+        $this->assertEquals('test-val', $val);
+        unset($_SERVER['HTTP_X_CUSTOM_HEADER']);
+    }
+
+    public function testUploadHandlerTraversalProtection(): void
+    {
+        $uploader = new \NovaFlow\Core\UploadHandler(sys_get_temp_dir() . '/test_uploads/');
+        // Attempting to delete using path traversal
+        $result = $uploader->delete('../../../some_critical_file.txt');
+        $this->assertFalse($result);
+    }
 }

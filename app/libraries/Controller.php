@@ -128,8 +128,11 @@ abstract class Controller
 
     public function checkAuth(): void
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         if (!isset($_SESSION['user_id'])) {
-            $this->redirect('auth/login');
+            $this->redirect('/auth/login');
         }
     }
 
@@ -191,6 +194,12 @@ abstract class Controller
         $validator = Validator::make($data, $rules, $messages);
         
         if ($validator->hasErrors()) {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['_old_input'] = $_POST;
+            $_SESSION['_errors'] = $validator->errors();
+
             $errors = $validator->errors();
             $firstField = array_key_first($errors);
             $error = $validator->firstError($firstField);

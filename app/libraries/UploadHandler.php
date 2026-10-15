@@ -133,7 +133,7 @@ class UploadHandler
             return $this->error('File size exceeds limit');
         }
 
-        $filename = $this->generateNewName ? $this->generateFilename($file['name']) : $file['name'];
+        $filename = $this->generateNewName ? $this->generateFilename($file['name']) : basename($file['name']);
         $destination = $this->uploadPath . $filename;
 
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
@@ -199,7 +199,7 @@ class UploadHandler
                 continue;
             }
 
-            $filename = $this->generateNewName ? $this->generateFilename($files['name'][$i]) : $files['name'][$i];
+            $filename = $this->generateNewName ? $this->generateFilename($files['name'][$i]) : basename($files['name'][$i]);
             $destination = $this->uploadPath . $filename;
 
             if (!move_uploaded_file($files['tmp_name'][$i], $destination)) {
@@ -229,9 +229,14 @@ class UploadHandler
      */
     public function delete(string $filename): bool
     {
-        $path = $this->uploadPath . $filename;
+        $safeFilename = basename($filename);
+        if ($safeFilename === '' || $safeFilename === '.' || $safeFilename === '..') {
+            return false;
+        }
+
+        $path = $this->uploadPath . $safeFilename;
         
-        if (file_exists($path)) {
+        if (file_exists($path) && is_file($path)) {
             return unlink($path);
         }
         

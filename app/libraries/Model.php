@@ -21,6 +21,7 @@ abstract class Model implements JsonSerializable
     protected array $allowedFields = [];
     protected array $hidden = []; // Fields to hide in JSON/Array
     protected $attributes = [];
+    protected array $relations = [];
     protected $db;
     public $exists = false;
 
@@ -45,6 +46,9 @@ abstract class Model implements JsonSerializable
     public function fill(array $attributes)
     {
         foreach ($attributes as $key => $value) {
+            if (!empty($this->allowedFields) && !in_array($key, $this->allowedFields)) {
+                continue;
+            }
             $this->attributes[$key] = $value;
         }
         return $this;
@@ -70,14 +74,18 @@ abstract class Model implements JsonSerializable
             return $this->attributes[$key];
         }
 
+        // Check loaded relations
+        if (array_key_exists($key, $this->relations)) {
+            return $this->relations[$key];
+        }
+
         // Check for relationship method
         if (method_exists($this, $key)) {
             $relation = $this->$key();
             if ($relation instanceof HasOne || $relation instanceof HasMany || $relation instanceof BelongsTo) {
-                // Return result of relationship
+                // Return result of relationship and cache in relations (not attributes)
                 $result = $relation->get();
-                // Cache it in attributes for next time
-                $this->attributes[$key] = $result;
+                $this->relations[$key] = $result;
                 return $result;
             }
         }
@@ -92,7 +100,7 @@ abstract class Model implements JsonSerializable
 
     public function __isset($key)
     {
-        return isset($this->attributes[$key]);
+        return isset($this->attributes[$key]) || isset($this->relations[$key]);
     }
 
     /**
@@ -100,7 +108,7 @@ abstract class Model implements JsonSerializable
      */
     public function getTable()
     {
-        if ($this->table) {
+        if (!empty($this->table)) {
             return $this->table;
         }
         // Inferred from class name
@@ -108,7 +116,8 @@ abstract class Model implements JsonSerializable
         $baseName = str_replace('Model', '', $className);
         // Convert PascalCase to snake_case and pluralize
         $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $baseName));
-        return 'tbl_' . $snake . 's'; // JahinMart standard uses tbl_ prefix
+        $prefix = defined('DB_PREFIX') ? DB_PREFIX : '';
+        return $prefix . $snake . 's';
     }
 
     /**
@@ -120,6 +129,16 @@ abstract class Model implements JsonSerializable
         $builder = (new QueryBuilder($db));
         $builder->setModel($this);
         return $builder;
+    }
+
+    /**
+     * Begin querying the model
+     */
+    public static function query(): QueryBuilder
+    {
+        static::bootIfNotBooted();
+        $instance = new static;
+        return $instance->newQuery();
     }
 
     /**
@@ -190,14 +209,25 @@ abstract class Model implements JsonSerializable
     {
         $query = $this->newQuery();
 
+        $dataToSave = $this->attributes;
+        if (!empty($this->allowedFields)) {
+            $allowed = array_flip(array_merge($this->allowedFields, [$this->primaryKey]));
+            $dataToSave = array_intersect_key($dataToSave, $allowed);
+        }
+
         if ($this->exists) {
             $pk = $this->primaryKey;
             $id = $this->attributes[$pk] ?? null;
             if (!$id) throw new Exception("Primary Key missing for update");
             
-            $query->where($pk, $id)->update($this->attributes);
+            $updateData = $dataToSave;
+            unset($updateData[$pk]);
+            if (!empty($updateData)) {
+                $query->where($pk, $id)->update($updateData);
+            }
         } else {
-            $id = $query->insert($this->attributes);
+            unset($dataToSave[$this->primaryKey]);
+            $id = $query->insertGetId($dataToSave);
             if ($id) {
                 $this->attributes[$this->primaryKey] = $id;
                 $this->exists = true;
@@ -213,12 +243,33 @@ abstract class Model implements JsonSerializable
         $pk = $this->primaryKey;
         $id = $this->attributes[$pk] ?? null;
 
+        if ($this->useSoftDelete) {
+            $time = date('Y-m-d H:i:s');
+            $this->attributes[$this->deletedAtColumn] = $time;
+            return (bool) $this->newQuery()->where($pk, $id)->update([
+                $this->deletedAtColumn => $time
+            ]);
+        }
+
         return $this->newQuery()->where($pk, $id)->delete();
+    }
+
+    public function restore()
+    {
+        if (!$this->exists || !$this->useSoftDelete) return false;
+
+        $pk = $this->primaryKey;
+        $id = $this->attributes[$pk] ?? null;
+
+        $this->attributes[$this->deletedAtColumn] = null;
+        return (bool) $this->newQuery()->where($pk, $id)->update([
+            $this->deletedAtColumn => null
+        ]);
     }
 
     public function toArray(): array
     {
-        $data = $this->attributes;
+        $data = array_merge($this->attributes, $this->relations);
         
         if (!empty($this->hidden)) {
             foreach ($this->hidden as $key) {

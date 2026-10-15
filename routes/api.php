@@ -9,13 +9,7 @@ $router->group(['prefix' => 'api/v1'], function($router) {
     $router->post('/login', 'Api\V1\AuthApiController@login');
     
     // Fallback for browser access to POST route
-    $router->get('/login', function($req, $res) {
-        return json_encode([
-            'status' => 'error', 
-            'message' => 'Method Not Allowed. Please use POST for Login.',
-            'docs' => 'Visit /api/docs for more info.'
-        ]);
-    });
+    $router->get('/login', 'Api\V1\AuthApiController@loginFallback');
     
     // User Management API Routes
     $router->get('/users', 'Api\V1\UserApiController@index');

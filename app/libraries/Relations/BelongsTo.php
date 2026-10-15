@@ -27,8 +27,8 @@ class BelongsTo
         if (!isset($this->parentData[$this->foreignKey])) {
             return null;
         }
-        $model = new ($this->relatedModel)();
-        return $model::find($this->parentData[$this->foreignKey]);
+        $model = $this->relatedModel;
+        return $model::where($this->ownerKey, $this->parentData[$this->foreignKey])->first();
     }
 
     public function getRelatedModel()

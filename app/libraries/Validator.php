@@ -163,10 +163,10 @@ class Validator
                 return in_array($value, $params);
 
             case 'unique':
-                return $this->isUnique($value, $params);
+                return $this->isUnique($value, $params, $field);
 
             case 'exists':
-                return $this->exists($value, $params);
+                return $this->exists($value, $params, $field);
 
             case 'regex':
                 return preg_match($params[0], $value);
@@ -217,12 +217,12 @@ class Validator
     /**
      * Check if value is unique in database
      */
-    private function isUnique($value, $params)
+    private function isUnique($value, $params, $field = null)
     {
         if (empty($params)) return true;
 
         $table = $params[0];
-        $column = $params[1] ?? 'id';
+        $column = $params[1] ?? ($field ?? 'id');
         $ignoreId = $params[2] ?? null;
         $idColumn = $params[3] ?? 'id';
 
@@ -237,12 +237,12 @@ class Validator
     /**
      * Check if value exists in database
      */
-    private function exists($value, $params)
+    private function exists($value, $params, $field = null)
     {
         if (empty($params)) return true;
 
         $table = $params[0];
-        $column = $params[1] ?? 'id';
+        $column = $params[1] ?? ($field ?? 'id');
 
         return DB::table($table)->where($column, $value)->count() > 0;
     }

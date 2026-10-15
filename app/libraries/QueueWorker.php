@@ -47,9 +47,16 @@ class QueueWorker
         
         echo $this->color("[ " . date('Y-m-d H:i:s') . " ] ", 'white') . "Processing: " . $this->color($displayName, 'cyan') . "\n";
 
+        $jobInstance = null;
         try {
+            $targetClass = $displayName;
+            $allowedClasses = [Job::class];
+            if ($targetClass && class_exists($targetClass) && is_subclass_of($targetClass, Job::class)) {
+                $allowedClasses[] = $targetClass;
+            }
+
             /** @var Job $jobInstance */
-            $jobInstance = unserialize($payload['instance']);
+            $jobInstance = unserialize($payload['instance'], ['allowed_classes' => $allowedClasses]);
             
             if (!$jobInstance instanceof Job) {
                 throw new \Exception("Job class must extend NovaFlow\\Core\\Job");
@@ -59,16 +66,19 @@ class QueueWorker
             Queue::delete($jobRecord->id);
             
             echo $this->color("[ " . date('Y-m-d H:i:s') . " ] ", 'white') . "✓ Success: " . $this->color($displayName, 'green') . "\n";
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             echo $this->color("[ " . date('Y-m-d H:i:s') . " ] ", 'white') . "✗ Failed: " . $this->color($displayName, 'red') . "\n";
             echo $this->color("  Error: " . $e->getMessage() . "\n", 'red');
 
-            if ($jobRecord->attempts < ($jobInstance->tries ?? 3)) {
+            $maxTries = ($jobInstance instanceof Job) ? $jobInstance->tries : 3;
+            if ($jobRecord->attempts < $maxTries) {
                 $delay = 60 * ($jobRecord->attempts + 1); // Exponential backoff wait
                 Queue::release($jobRecord->id, $delay);
                 echo $this->color("  Released back to queue with " . $delay . "s delay.\n", 'yellow');
             } else {
-                if (isset($jobInstance)) $jobInstance->failed($e);
+                if ($jobInstance instanceof Job) {
+                    $jobInstance->failed(new \Exception($e->getMessage(), (int)$e->getCode(), $e));
+                }
                 Queue::delete($jobRecord->id);
                 echo $this->color("  Max attempts reached. Job deleted.\n", 'red');
             }

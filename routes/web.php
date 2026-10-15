@@ -17,3 +17,4 @@ $router->get('/logout', 'AuthController@logout');
 
 // Documentation Routes
 $router->get('/docs', 'DocsController@index');
+$router->get('/api/docs', 'ApiDocsController@index');

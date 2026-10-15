@@ -38,12 +38,14 @@ class AdminUserController extends Controller
         }
 
         $total = $query->count();
+        $offset = max(0, ($page - 1) * $perPage);
         $users = $query->orderBy('id', 'DESC')
-                      ->limit($perPage, ($page - 1) * $perPage)
+                      ->limit($perPage)
+                      ->offset($offset)
                       ->get();
 
         $this->view('admin/users/index', [
-            'title' => 'ব্যবহারকারী হইসেস — NovaFlow',
+            'title' => 'ব্যবহারকারী তালিকা — NovaFlow',
             'users' => $users,
             'total' => $total,
             'page' => $page,

@@ -3,30 +3,44 @@
 //  NovaFlow MVC — Configuration Settings
 // ============================================================
 
+use NovaFlow\Core\Dotenv;
+
 // App URL Root
-define('BASE_URL', '/NovaFlow');
+if (!defined('BASE_URL')) {
+    define('BASE_URL', Dotenv::get('BASE_URL', '/NovaFlow'));
+}
 
 // Site Name
-define('APP_NAME', 'NovaFlow PHP Framework');
+if (!defined('APP_NAME')) {
+    define('APP_NAME', Dotenv::get('APP_NAME', 'NovaFlow PHP Framework'));
+}
 
 // App Version
-define('APP_VERSION', '1.0.0');
+if (!defined('APP_VERSION')) {
+    define('APP_VERSION', '2.0.0');
+}
 
-// Environment (local, production)
-define('APP_ENV', 'local');
+// Environment (local, development, production)
+if (!defined('APP_ENV')) {
+    define('APP_ENV', Dotenv::get('APP_ENV', 'local'));
+}
 
 // Timezone
-date_default_timezone_set('Asia/Dhaka');
+date_default_timezone_set(Dotenv::get('TIMEZONE', 'Asia/Dhaka'));
 
 // Session config
-define('SESSION_NAME', 'NovaFlow_Session');
-define('SESSION_LIFETIME', 3600);
+if (!defined('SESSION_NAME')) {
+    define('SESSION_NAME', Dotenv::get('SESSION_NAME', 'NovaFlow_Session'));
+}
+if (!defined('SESSION_LIFETIME')) {
+    define('SESSION_LIFETIME', (int) Dotenv::get('SESSION_LIFETIME', 3600));
+}
 
 // Path Constants
-define('APP_PATH', dirname(__DIR__) . '/app');
-define('VIEW_PATH', APP_PATH . '/views');
-define('UPLOAD_PATH', dirname(__DIR__) . '/public/uploads');
+if (!defined('APP_PATH')) define('APP_PATH', dirname(__DIR__) . '/app');
+if (!defined('VIEW_PATH')) define('VIEW_PATH', APP_PATH . '/views');
+if (!defined('UPLOAD_PATH')) define('UPLOAD_PATH', dirname(__DIR__) . '/public/uploads');
 
 // Default Controller & Method
-define('DEFAULT_CONTROLLER', 'Home');
-define('DEFAULT_METHOD', 'index');
+if (!defined('DEFAULT_CONTROLLER')) define('DEFAULT_CONTROLLER', 'Home');
+if (!defined('DEFAULT_METHOD')) define('DEFAULT_METHOD', 'index');

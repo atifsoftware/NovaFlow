@@ -7,6 +7,8 @@ use Exception;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionParameter;
+use ReflectionFunction;
+use ReflectionNamedType;
 
 /**
  * Service Container (IoC)
@@ -199,7 +201,15 @@ class Container
             throw new Exception("Unresolvable dependency [{$parameter->name}] in class {$parameter->getDeclaringClass()->getName()}");
         }
 
-        return $this->make($type->getName());
+        if ($type instanceof ReflectionNamedType) {
+            return $this->make($type->getName());
+        }
+
+        if ($parameter->isDefaultValueAvailable()) {
+            return $parameter->getDefaultValue();
+        }
+
+        throw new Exception("Unresolvable union/intersection dependency [{$parameter->name}] in class {$parameter->getDeclaringClass()->getName()}");
     }
 
     /**

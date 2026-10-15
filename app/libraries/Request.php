@@ -12,11 +12,22 @@ class Request
     private static $user = null; // Store authenticated user
 
     /**
-     * Get request method
+     * Get request method (supports RESTful method spoofing via _method or X-HTTP-Method-Override)
      */
     public static function method()
     {
-        return $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        
+        if ($method === 'POST') {
+            if (!empty($_POST['_method'])) {
+                return strtoupper((string)$_POST['_method']);
+            }
+            if (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+                return strtoupper((string)$_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+            }
+        }
+
+        return $method;
     }
 
     /**
@@ -24,7 +35,21 @@ class Request
      */
     public static function getPath()
     {
-        $path = $_GET['url'] ?? '/';
+        if (isset($_GET['url'])) {
+            $path = $_GET['url'];
+        } else {
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            $path = parse_url($uri, PHP_URL_PATH) ?? '/';
+            
+            // Strip BASE_URL prefix if running in subfolder
+            if (defined('BASE_URL') && BASE_URL !== '' && BASE_URL !== '/') {
+                $base = rtrim(BASE_URL, '/');
+                if (str_starts_with($path, $base)) {
+                    $path = substr($path, strlen($base));
+                }
+            }
+        }
+
         $path = '/' . trim($path, '/');
         
         // Remove query strings if they exist
@@ -162,8 +187,62 @@ class Request
     }
 
     /**
+     * Get all request headers
+     */
+    public static function headers(): array
+    {
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if ($headers !== false) {
+                return $headers;
+            }
+        }
+
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (str_starts_with($name, 'HTTP_')) {
+                $headerName = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
+                $headers[$headerName] = $value;
+            } elseif (in_array($name, ['CONTENT_TYPE', 'CONTENT_LENGTH'])) {
+                $headerName = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', $name))));
+                $headers[$headerName] = $value;
+            }
+        }
+        return $headers;
+    }
+
+    /**
+     * Get specific request header (case-insensitive)
+     */
+    public static function header(string $key, ?string $default = null): ?string
+    {
+        $headers = self::headers();
+        $target = strtolower(str_replace(['_', '-'], '', $key));
+        foreach ($headers as $name => $value) {
+            if (strtolower(str_replace(['_', '-'], '', $name)) === $target) {
+                return $value;
+            }
+        }
+        return $default;
+    }
+
+    /**
      * Auth User helpers
      */
     public static function setUser($user) { self::$user = $user; }
     public static function getUser() { return self::$user; }
+
+    /**
+     * Get old flashed input from session
+     */
+    public static function old(?string $key = null, mixed $default = null): mixed
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if ($key === null) {
+            return $_SESSION['_old_input'] ?? [];
+        }
+        return $_SESSION['_old_input'][$key] ?? $default;
+    }
 }

@@ -41,4 +41,41 @@ class SqliteGrammar extends Grammar
         $format = $formats[strtoupper($function)] ?? '%Y';
         return $prefix . "strftime('$format', " . $this->wrap($column) . ") $operator ?";
     }
+
+    /**
+     * Extract parameter bindings from WHERE clauses, formatting 2-digit months/days for SQLite
+     */
+    public function getWhereBindings(array $wheres): array
+    {
+        $params = parent::getWhereBindings($wheres);
+
+        $paramIndex = 0;
+        foreach ($wheres as $where) {
+            if (isset($where['type']) && $where['type'] === 'NESTED') {
+                $paramIndex += count($where['query']->getBindings());
+                continue;
+            }
+
+            $op = isset($where['operator']) ? strtoupper($where['operator']) : '=';
+            if ($op === 'DATE_FUNC') {
+                $func = strtoupper($where['function'] ?? '');
+                if (($func === 'MONTH' || $func === 'DAY') && isset($params[$paramIndex]) && is_numeric($params[$paramIndex])) {
+                    $params[$paramIndex] = sprintf('%02d', (int)$params[$paramIndex]);
+                }
+                $paramIndex++;
+            } elseif ($op !== 'IS NULL' && $op !== 'IS NOT NULL' && $op !== 'COLUMN') {
+                if ($op === 'IN' || $op === 'NOT IN') {
+                    $paramIndex += count((array)($where['value'] ?? []));
+                } elseif ($op === 'BETWEEN' || $op === 'NOT BETWEEN') {
+                    $paramIndex += 2;
+                } elseif ($op === 'RAW') {
+                    $paramIndex += count((array)($where['value'] ?? []));
+                } elseif ($where['column'] ?? null) {
+                    $paramIndex++;
+                }
+            }
+        }
+
+        return $params;
+    }
 }

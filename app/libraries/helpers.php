@@ -212,3 +212,12 @@ if (!function_exists('event')) {
     }
 }
 
+if (!function_exists('old')) {
+    /**
+     * Get old flashed input from session
+     */
+    function old(?string $key = null, mixed $default = null): mixed {
+        return \NovaFlow\Core\Request::old($key, $default);
+    }
+}
+

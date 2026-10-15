@@ -16,7 +16,14 @@ class JWT
     protected static function getSecret()
     {
         if (self::$secret === null) {
-            self::$secret = env('JWT_SECRET', 'jahin_mart_secure_token_secret_123');
+            $secret = env('JWT_SECRET') ?: env('APP_KEY');
+            if (empty($secret)) {
+                if (defined('APP_ENV') && APP_ENV === 'production') {
+                    throw new \RuntimeException("JWT_SECRET or APP_KEY must be configured in production environment.");
+                }
+                $secret = 'novaflow_default_development_secret_key_change_in_production';
+            }
+            self::$secret = $secret;
         }
         return self::$secret;
     }

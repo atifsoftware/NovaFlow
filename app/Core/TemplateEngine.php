@@ -55,6 +55,7 @@ class TemplateEngine
             $this->with($data);
         }
 
+        $template = str_replace('.', '/', $template);
         $templateFile = $this->templatePath . '/' . $template . '.php';
         
         if (!file_exists($templateFile)) {
@@ -74,7 +75,16 @@ class TemplateEngine
         extract($this->data);
         ob_start();
         include $cacheFile;
-        return ob_get_clean();
+        $output = ob_get_clean();
+
+        // যদি প্যারেন্ট টেমপ্লেট থাকে, সেটি রেন্ডার করুন
+        if ($this->parentTemplate) {
+            $parent = $this->parentTemplate;
+            $this->parentTemplate = null;
+            return $this->render($parent, $this->data);
+        }
+
+        return $output;
     }
 
     /**
@@ -90,78 +100,53 @@ class TemplateEngine
      */
     private function compile($content)
     {
-        // @extends('layout')
-        $content = preg_replace_callback(
-            '/@extends\([\'"]([^\'"]+)[\'"]\)/',
-            function($matches) {
-                $this->parentTemplate = $matches[1];
-                return '';
-            },
-            $content
-        );
+        // Compile @extends
+        $content = preg_replace('/@extends\([\'"]([^\'"]+)[\'"]\)/', '<?php $this->extend("$1"); ?>', $content);
 
-        // @section('name')
-        $content = preg_replace_callback(
-            '/@section\([\'"]([^\'"]+)[\'"]\)(.*?)@endsection/s',
-            function($matches) {
-                $this->sections[$matches[1]] = $matches[2];
-                return '';
-            },
-            $content
-        );
+        // Compile @section
+        $content = preg_replace('/@section\([\'"]([^\'"]+)[\'"]\)/', '<?php $this->startSection("$1"); ?>', $content);
 
-        // @yield('section')
+        // Compile @endsection
+        $content = preg_replace('/@endsection/', '<?php $this->stopSection(); ?>', $content);
+
         $content = preg_replace_callback(
             '/@yield\([\'"]([^\'"]+)[\'"]\)/',
             function($matches) {
                 $sectionName = $matches[1];
-                return "<?php echo isset(\$this->sections['{$sectionName}']) ? \$this->sections['{$sectionName}'] : ''; ?>";
-            },
-            $content
-        );
-
-        // {{ $variable }} - এসকেপড আউটপুট
-        $content = preg_replace_callback(
-            '/\{\{\s*(\$?[a-zA-Z0-9_]+)\s*\}\}/',
-            function($matches) {
-                $var = $matches[1];
-                if (strpos($var, '$') !== 0) {
-                    $var = '$' . $var;
-                }
-                return "<?php echo htmlspecialchars({$var}, ENT_QUOTES, 'UTF-8'); ?>";
+                return '<?php echo $this->yieldContent("' . $sectionName . '"); ?>';
             },
             $content
         );
 
         // {!! $variable !!} - রা আউটপুট (HTML অ্যালো করা)
+        $content = preg_replace('/\{\!\!\s*(.+?)\s*\!\!\}/', '<?php echo $1; ?>', $content);
+
+        // {{ $variable }} - এসকেপড আউটপুট (Allows expressions like $user->name, $data['key'])
         $content = preg_replace_callback(
-            '/\{\!\!\s*(\$?[a-zA-Z0-9_]+)\s*\!\!\}/',
+            '/\{\{\s*(.+?)\s*\}\}/',
             function($matches) {
-                $var = $matches[1];
-                if (strpos($var, '$') !== 0) {
-                    $var = '$' . $var;
-                }
-                return "<?php echo {$var}; ?>";
+                $expr = $matches[1];
+                return "<?php echo htmlspecialchars((string)({$expr}), ENT_QUOTES, 'UTF-8'); ?>";
             },
             $content
         );
 
         // @if, @else, @endif
-        $content = preg_replace('/@if\((.+?)\)/', '<?php if(\1): ?>', $content);
-        $content = preg_replace('/@elseif\((.+?)\)/', '<?php elseif(\1): ?>', $content);
+        $content = preg_replace('/@if\((.+?)\)/', '<?php if($1): ?>', $content);
+        $content = preg_replace('/@elseif\((.+?)\)/', '<?php elseif($1): ?>', $content);
         $content = preg_replace('/@else/', '<?php else: ?>', $content);
         $content = preg_replace('/@endif/', '<?php endif; ?>', $content);
 
         // @foreach, @endforeach
-        $content = preg_replace('/@foreach\((.+?)\s+as\s+(.+?)\)/', '<?php foreach(\1 as \2): ?>', $content);
+        $content = preg_replace('/@foreach\((.+?)\s+as\s+(.+?)\)/', '<?php foreach($1 as $2): ?>', $content);
         $content = preg_replace('/@endforeach/', '<?php endforeach; ?>', $content);
 
         // @for, @endfor
-        $content = preg_replace('/@for\((.+?)\)/', '<?php for(\1): ?>', $content);
+        $content = preg_replace('/@for\((.+?)\)/', '<?php for($1): ?>', $content);
         $content = preg_replace('/@endfor/', '<?php endfor; ?>', $content);
 
         // @while, @endwhile
-        $content = preg_replace('/@while\((.+?)\)/', '<?php while(\1): ?>', $content);
+        $content = preg_replace('/@while\((.+?)\)/', '<?php while($1): ?>', $content);
         $content = preg_replace('/@endwhile/', '<?php endwhile; ?>', $content);
 
         // @include('template')
@@ -175,7 +160,7 @@ class TemplateEngine
         );
 
         // @php ... @endphp
-        $content = preg_replace('/@php(.*?)@endphp/s', '<?php \1 ?>', $content);
+        $content = preg_replace('/@php(.*?)@endphp/s', '<?php $1 ?>', $content);
 
         // কমেন্ট <!-- {{-- comment --}} -->
         $content = preg_replace('/\{\{\-\-\s*(.*?)\s*\-\-\}\}/s', '', $content);
@@ -218,6 +203,14 @@ class TemplateEngine
             $this->sections[$this->yieldSection] = ob_get_clean();
             $this->yieldSection = null;
         }
+    }
+
+    /**
+     * সেকশনের কন্টেন্ট ফিরিয়ে দেওয়া
+     */
+    public function yieldContent($name, $default = '')
+    {
+        return $this->sections[$name] ?? $default;
     }
 
     /**

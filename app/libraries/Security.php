@@ -98,11 +98,13 @@ class Security
      */
     public static function hashPassword($password)
     {
-        return password_hash($password, PASSWORD_ARGON2ID, [
+        $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
+        $options = $algo === PASSWORD_ARGON2ID ? [
             'memory_cost' => 65536,
             'time_cost' => 4,
-            'threads' => 3
-        ]);
+        ] : [];
+
+        return password_hash($password, $algo, $options);
     }
 
     /**
@@ -116,10 +118,25 @@ class Security
     /**
      * Encrypt data using Encrypt-then-MAC (AES-256-CBC + HMAC-SHA256)
      */
+    private static function resolveEncryptionKey(?string $key): string
+    {
+        $resolved = $key ?? env('APP_KEY') ?? env('JWT_SECRET');
+        if (empty($resolved)) {
+            if (defined('APP_ENV') && APP_ENV === 'production') {
+                throw new \RuntimeException("APP_KEY or JWT_SECRET must be set in production to encrypt/decrypt data.");
+            }
+            $resolved = 'novaflow_default_32_bytes_dev_secret_key_!!!';
+        }
+        return $resolved;
+    }
+
+    /**
+     * Encrypt data using Encrypt-then-MAC (AES-256-CBC + HMAC-SHA256)
+     */
     public static function encrypt($data, $key = null)
     {
         // 1. Resolve key (Derive cryptographically strong keys using SHA-256)
-        $key = $key ?? env('APP_KEY') ?? env('JWT_SECRET') ?? 'default_key_change_this_32_bytes_long_secret_key_!!!';
+        $key = self::resolveEncryptionKey($key);
         
         $derivedKey = hash_hmac('sha256', 'encryption', $key, true);
         $macKey = hash_hmac('sha256', 'authentication', $key, true);
@@ -142,7 +159,7 @@ class Security
      */
     public static function decrypt($data, $key = null)
     {
-        $key = $key ?? env('APP_KEY') ?? env('JWT_SECRET') ?? 'default_key_change_this_32_bytes_long_secret_key_!!!';
+        $key = self::resolveEncryptionKey($key);
         
         $data = base64_decode($data);
         if (strlen($data) < 48) { // 16 bytes IV + 32 bytes MAC

@@ -467,7 +467,12 @@ class QueryBuilder
             $operator = '=';
         }
 
-        $condition = "$column $operator '$value'";
+        $validOperators = ['=', '>', '<', '>=', '<=', '<>', '!=', 'LIKE', 'NOT LIKE'];
+        $operator = in_array(strtoupper(trim($operator)), $validOperators) ? strtoupper(trim($operator)) : '=';
+        $wrappedCol = $this->escapeIdentifier($column);
+        $escapedValue = is_numeric($value) ? $value : "'" . addcslashes((string)$value, "\000\n\r\\'\"\032") . "'";
+
+        $condition = "$wrappedCol $operator $escapedValue";
         if ($this->having) {
             $this->having .= " AND $condition";
         } else {
@@ -713,14 +718,127 @@ class QueryBuilder
 
     public function count(): int
     {
+        if (!empty($this->groupBy)) {
+            $originalLimit = $this->limit;
+            $originalOffset = $this->offset;
+            $originalOrderBy = $this->orderBy;
+
+            $this->limit = null;
+            $this->offset = null;
+            $this->orderBy = '';
+
+            $subSql = $this->toSql();
+            $params = $this->getBindings();
+
+            $this->limit = $originalLimit;
+            $this->offset = $originalOffset;
+            $this->orderBy = $originalOrderBy;
+
+            $sql = "SELECT COUNT(*) as count FROM ({$subSql}) as count_subquery";
+            $result = $this->db->fetchOne($sql, $params);
+            return (int) ($result['count'] ?? 0);
+        }
+
         $originalColumns = $this->columns;
+        $originalLimit = $this->limit;
+        $originalOffset = $this->offset;
+        $originalOrderBy = $this->orderBy;
+
         $this->columns = 'COUNT(*) as count';
+        $this->limit = null;
+        $this->offset = null;
+        $this->orderBy = '';
+
         $sql = $this->toSql();
         $params = $this->getBindings();
+
         $this->columns = $originalColumns;
+        $this->limit = $originalLimit;
+        $this->offset = $originalOffset;
+        $this->orderBy = $originalOrderBy;
 
         $result = $this->db->fetchOne($sql, $params);
         return (int) ($result['count'] ?? 0);
+    }
+
+    public function aggregate(string $function, string $column = '*'): mixed
+    {
+        $wrapped = $column === '*' ? '*' : $this->grammar->wrap($column);
+        $originalColumns = $this->columns;
+        $originalLimit = $this->limit;
+        $originalOffset = $this->offset;
+        $originalOrderBy = $this->orderBy;
+
+        $this->columns = "{$function}({$wrapped}) as aggregate";
+        $this->limit = null;
+        $this->offset = null;
+        $this->orderBy = '';
+
+        $sql = $this->toSql();
+        $params = $this->getBindings();
+
+        $this->columns = $originalColumns;
+        $this->limit = $originalLimit;
+        $this->offset = $originalOffset;
+        $this->orderBy = $originalOrderBy;
+
+        $result = $this->db->fetchOne($sql, $params);
+        return $result['aggregate'] ?? null;
+    }
+
+    public function sum(string $column)
+    {
+        $res = $this->aggregate('SUM', $column);
+        return $res !== null ? (is_numeric($res) ? $res + 0 : $res) : 0;
+    }
+
+    public function avg(string $column)
+    {
+        $res = $this->aggregate('AVG', $column);
+        return $res !== null ? (float)$res : 0.0;
+    }
+
+    public function min(string $column)
+    {
+        return $this->aggregate('MIN', $column);
+    }
+
+    public function max(string $column)
+    {
+        return $this->aggregate('MAX', $column);
+    }
+
+    public function value(string $column)
+    {
+        $row = $this->first();
+        if (!$row) return null;
+        return is_object($row) ? ($row->$column ?? null) : ($row[$column] ?? null);
+    }
+
+    public function pluck(string $column, ?string $key = null): array
+    {
+        $results = $this->get();
+        $values = [];
+        foreach ($results as $item) {
+            $val = is_object($item) ? ($item->$column ?? null) : ($item[$column] ?? null);
+            if ($key !== null) {
+                $k = is_object($item) ? ($item->$key ?? null) : ($item[$key] ?? null);
+                $values[$k] = $val;
+            } else {
+                $values[] = $val;
+            }
+        }
+        return $values;
+    }
+
+    public function latest(string $column = 'id'): self
+    {
+        return $this->orderBy($column, 'DESC');
+    }
+
+    public function oldest(string $column = 'id'): self
+    {
+        return $this->orderBy($column, 'ASC');
     }
 
     public function insert(array $data)
@@ -748,7 +866,8 @@ class QueryBuilder
     public function insertGetId(array $data)
     {
         $res = $this->insert($data);
-        return $res ?: $this->db->getLastId();
+        $lastId = $this->db->getLastId();
+        return $lastId ?: (is_numeric($res) ? (int)$res : $res);
     }
 
     public function update(array $data)
@@ -805,8 +924,13 @@ class QueryBuilder
     
     public function orderBy($column, $direction = 'ASC'): self
     {
-        $direction = strtoupper($direction);
-        $this->orderBy = $this->orderBy ? "$this->orderBy, $column $direction" : "$column $direction";
+        $direction = in_array(strtoupper(trim($direction)), ['ASC', 'DESC']) ? strtoupper(trim($direction)) : 'ASC';
+        $column = preg_replace('/[^a-zA-Z0-9_\.`"]/', '', trim((string)$column));
+        if ($column === '') {
+            return $this;
+        }
+        $clause = "$column $direction";
+        $this->orderBy = $this->orderBy ? "$this->orderBy, $clause" : $clause;
         return $this;
     }
 

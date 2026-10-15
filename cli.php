@@ -66,11 +66,8 @@ class CLI
         $this->scaffold = new ScaffoldGenerator();
         $this->router = new Router();
         
-        // Load routes into router for Route List
-        $router = $this->router;
-        if (file_exists(BASE_PATH . '/config/routes.php')) {
-            require BASE_PATH . '/config/routes.php';
-        }
+        // Load all routes into router for Route List
+        $this->router->loadAllRoutes();
     }
 
     public function run()
@@ -478,14 +475,39 @@ class CLI
             case 'queue:work':
                 $this->startQueueWorker();
                 break;
+            case 'route:cache':
+                try {
+                    $this->router->loadAllRoutes();
+                    $count = 0;
+                    foreach ($this->router->getRoutes() as $paths) {
+                        $count += count($paths);
+                    }
+                    if ($this->router->cacheRoutes()) {
+                        echo $this->color("\n✓ Routes cached successfully! ($count routes compiled)\n", 'green');
+                        echo $this->color("  File: storage/cache/routes.php\n\n", 'cyan');
+                    } else {
+                        echo $this->color("\n✗ Failed to write route cache.\n\n", 'red');
+                    }
+                } catch (\Exception $e) {
+                    echo $this->color("\n✗ Route caching failed: " . $e->getMessage() . "\n\n", 'red');
+                }
+                break;
+
+            case 'route:clear':
+                $this->router->clearRouteCache();
+                echo $this->color("\n✓ Route cache cleared successfully! Dynamic loading active.\n\n", 'green');
+                break;
+
             case 'cache:clear':
                 \NovaFlow\Core\Cache::clear();
-                echo $this->color("✓ Cache cleared successfully!\n", 'green');
+                $this->router->clearRouteCache();
+                echo $this->color("✓ All cache (Data & Routes) cleared successfully!\n", 'green');
                 break;
+
             default:
                 echo $this->color("Unknown command: {$cmd}\n", 'red');
                 echo "Available commands:\n";
-                echo "  tinker, migrate, db:seed, make:seeder, make:factory, make:migration, make:model, routes, health, queue:work, cache:clear\n";
+                echo "  tinker, migrate, db:seed, make:seeder, make:factory, make:migration, make:model, routes, route:cache, route:clear, health, queue:work, cache:clear\n";
                 exit(1);
         }
     }

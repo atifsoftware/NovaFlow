@@ -58,8 +58,8 @@ $router = new \NovaFlow\Core\Router();
     return $router;
 });
 
-// 7. Load Routes
-require_once dirname(__DIR__) . '/config/routes.php';
+// 7. Load Routes (Web, Admin, API & ERP Modules)
+$router->loadAllRoutes();
 
 // 8. Resolve
 $router->resolve();

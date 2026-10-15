@@ -44,6 +44,7 @@ class Kernel
         'log'      => LogRequestMiddleware::class,
         'cors'     => CorsMiddleware::class,
         'throttle' => ThrottleRequestsMiddleware::class,
+        'csrf'     => \NovaFlow\Core\CSRFMiddleware::class,
     ];
 
     /**

@@ -43,8 +43,15 @@ class AuthController extends Controller
         $user = UserModel::authenticate($email, $password);
 
         if ($user) {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
             $_SESSION['user_id']   = $user->id;
             $_SESSION['user_name'] = $user->name;
+            $_SESSION['role']      = $user->role ?? 'user';
             $_SESSION['user_role'] = $user->role ?? 'user';
             
             flash('success', 'লগইন সফল হয়েছে!');
@@ -60,13 +67,26 @@ class AuthController extends Controller
      */
     public function logout(): void
     {
-        session_unset();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
         session_destroy();
         $this->redirect('/login');
     }
 
     private function isLoggedIn(): bool
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         return isset($_SESSION['user_id']);
     }
 }

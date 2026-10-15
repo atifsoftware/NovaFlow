@@ -43,9 +43,11 @@ class SettingModel extends Model
         $exists = DB::fetchValue("SELECT COUNT(*) FROM " . self::$settingsTable . " WHERE setting_key = ?", [$key]);
         
         if ($exists) {
-            return DB::query("UPDATE " . self::$settingsTable . " SET setting_value = ? WHERE setting_key = ?", [$value, $key]);
+            DB::query("UPDATE " . self::$settingsTable . " SET setting_value = ? WHERE setting_key = ?", [$value, $key]);
+            return true;
         } else {
-            return DB::query("INSERT INTO " . self::$settingsTable . " (setting_key, setting_value) VALUES (?, ?)", [$key, $value]);
+            $id = DB::query("INSERT INTO " . self::$settingsTable . " (setting_key, setting_value) VALUES (?, ?)", [$key, $value]);
+            return (bool) $id;
         }
     }
 }

@@ -18,7 +18,7 @@ class UserModel extends Model
      */
     public static function authenticate(string $email, string $password): ?object
     {
-        $user = self::query()->where('email', $email)->first();
+        $user = static::where('email', $email)->first();
         
         if ($user && password_verify($password, $user->password)) {
             return $user;
@@ -32,6 +32,6 @@ class UserModel extends Model
      */
     public static function findByEmail(string $email): ?object
     {
-        return self::query()->where('email', $email)->first();
+        return static::where('email', $email)->first();
     }
 }

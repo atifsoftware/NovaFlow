@@ -613,6 +613,16 @@
             </div>
         </div>
 
+        <!-- ব্যবহারকারী ব্যবস্থাপনা -->
+        <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+        <div class="nav-section">
+            <a href="<?= BASE_URL ?>/admin/users" class="nav-link-item <?= str_contains($_SERVER['REQUEST_URI']??'', '/admin/users') ? 'active' : '' ?>">
+                <div class="nav-icon"><i class="fas fa-users-cog"></i></div>
+                ব্যবহারকারী ব্যবস্থাপনা
+            </a>
+        </div>
+        <?php endif; ?>
+
         <!-- সেটিংস -->
         <div class="nav-section">
             <a href="<?= BASE_URL ?>/admin/settings" class="nav-link-item <?= str_contains($_SERVER['REQUEST_URI']??'', '/admin/settings') ? 'active' : '' ?>">

@@ -92,9 +92,232 @@ class Router
         return $this->add('post', $path, $callback);
     }
 
+    public function put(string $path, mixed $callback): self
+    {
+        return $this->add('put', $path, $callback);
+    }
+
+    public function patch(string $path, mixed $callback): self
+    {
+        return $this->add('patch', $path, $callback);
+    }
+
+    public function delete(string $path, mixed $callback): self
+    {
+        return $this->add('delete', $path, $callback);
+    }
+
+    public function options(string $path, mixed $callback): self
+    {
+        return $this->add('options', $path, $callback);
+    }
+
+    public function any(string $path, mixed $callback): self
+    {
+        foreach (['get', 'post', 'put', 'patch', 'delete', 'options'] as $verb) {
+            $this->add($verb, $path, $callback);
+        }
+        return $this;
+    }
+
     /**
-     * Resolve the current request.
+     * Register standard RESTful resource routes for an ERP entity or Controller.
+     *
+     * Generated Routes:
+     * - GET    /{name}             => $controller@index
+     * - GET    /{name}/create      => $controller@create
+     * - POST   /{name}             => $controller@store
+     * - GET    /{name}/{id}        => $controller@show
+     * - GET    /{name}/{id}/edit   => $controller@edit
+     * - PUT    /{name}/{id}        => $controller@update
+     * - POST   /{name}/{id}/update => $controller@update (HTML form fallback)
+     * - DELETE /{name}/{id}        => $controller@destroy
+     * - POST   /{name}/{id}/delete => $controller@destroy (HTML form fallback)
      */
+    public function resource(string $name, string $controller, array $options = []): self
+    {
+        $name = trim($name, '/');
+        $only = isset($options['only']) ? (array) $options['only'] : null;
+        $except = isset($options['except']) ? (array) $options['except'] : [];
+
+        $actions = [
+            'index'   => ['verb' => 'get',    'path' => "/$name",             'action' => 'index'],
+            'create'  => ['verb' => 'get',    'path' => "/$name/create",      'action' => 'create'],
+            'store'   => ['verb' => 'post',   'path' => "/$name",             'action' => 'store'],
+            'show'    => ['verb' => 'get',    'path' => "/$name/{id}",        'action' => 'show'],
+            'edit'    => ['verb' => 'get',    'path' => "/$name/{id}/edit",   'action' => 'edit'],
+            'update'  => ['verb' => 'put',    'path' => "/$name/{id}",        'action' => 'update'],
+            'destroy' => ['verb' => 'delete', 'path' => "/$name/{id}",        'action' => 'destroy'],
+        ];
+
+        foreach ($actions as $key => $action) {
+            if ($only !== null && !in_array($key, $only, true)) {
+                continue;
+            }
+            if (in_array($key, $except, true)) {
+                continue;
+            }
+
+            $this->add($action['verb'], $action['path'], $controller . '@' . $action['action']);
+
+            // For HTML form compatibility where PUT/DELETE might use direct POST URLs
+            if ($key === 'update') {
+                $this->add('post', "/$name/{id}/update", $controller . '@update');
+            } elseif ($key === 'destroy') {
+                $this->add('post', "/$name/{id}/delete", $controller . '@destroy');
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Group routes under an ERP Module prefix with automatic module metadata
+     */
+    public function module(string $name, \Closure $callback, array $attributes = []): void
+    {
+        $prefix = strtolower(trim($name, '/'));
+        $attributes['prefix'] = $attributes['prefix'] ?? $prefix;
+        $attributes['module'] = $name;
+
+        $this->group($attributes, $callback);
+    }
+
+    /**
+     * Auto-discover and register all ERP module routes from app/Modules
+     */
+    public function loadModules(?string $path = null): self
+    {
+        $baseDir = $path ?: (defined('BASE_PATH') ? BASE_PATH . '/app/Modules' : dirname(__DIR__, 2) . '/app/Modules');
+
+        if (!is_dir($baseDir)) {
+            return $this;
+        }
+
+        $modules = glob($baseDir . '/*', GLOB_ONLYDIR);
+        if ($modules === false) {
+            return $this;
+        }
+
+        foreach ($modules as $moduleDir) {
+            $routeFile = $moduleDir . '/routes.php';
+            if (file_exists($routeFile)) {
+                $moduleName = basename($moduleDir);
+                $router = $this;
+                require $routeFile;
+            }
+        }
+
+        return $this;
+    }
+
+    // ============================================================
+    // Unified Master Route Loader:
+    // 0. Checks if compiled route cache exists in storage/cache/routes.php (0.01ms ultra-fast)
+    // 1. Loads routes from routes/ (web.php, admin.php, api.php, etc.) if not cached
+    // 2. Loads all ERP business modules from app/Modules (subdirectories)
+    // ============================================================
+    public function loadAllRoutes(): self
+    {
+        $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+        $cacheFile = $this->getCachePath($baseDir);
+
+        // 0. Ultra-Fast Path: If compiled route cache exists, load directly in 0.01ms!
+        if (file_exists($cacheFile)) {
+            $cached = @require $cacheFile;
+            if (is_array($cached)) {
+                $this->routes = $cached;
+                return $this;
+            }
+        }
+
+        // 1. Auto-load all routes from routes/*.php dynamically
+        $routesDir = $baseDir . '/routes';
+        if (is_dir($routesDir)) {
+            $files = glob($routesDir . '/*.php');
+            if ($files !== false) {
+                // Prioritize web.php first, then other files alphabetically
+                usort($files, function ($a, $b) {
+                    if (basename($a) === 'web.php') return -1;
+                    if (basename($b) === 'web.php') return 1;
+                    return strcmp($a, $b);
+                });
+
+                foreach ($files as $fullPath) {
+                    $router = $this;
+                    require $fullPath;
+                }
+            }
+        }
+
+        // 2. Load all ERP modules from app/Modules
+        $this->loadModules($baseDir . '/app/Modules');
+
+        return $this;
+    }
+
+    /**
+     * Get route cache file path
+     */
+    public function getCachePath(?string $baseDir = null): string
+    {
+        $base = $baseDir ?: (defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2));
+        return $base . '/storage/cache/routes.php';
+    }
+
+    /**
+     * Compile and cache all registered routes to storage/cache/routes.php
+     */
+    public function cacheRoutes(?string $path = null): bool
+    {
+        $cacheFile = $path ?: $this->getCachePath();
+
+        // Check for Closures (Closures cannot be safely serialized to static PHP cache)
+        foreach ($this->routes as $method => $paths) {
+            foreach ($paths as $routePath => $info) {
+                if ($info['callback'] instanceof \Closure) {
+                    throw new \RuntimeException("Unable to cache route [$method $routePath]: Route uses an anonymous Closure. Please use 'Controller@method' notation for route caching.");
+                }
+            }
+        }
+
+        $dir = dirname($cacheFile);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $content = "<?php\n\n";
+        $content .= "// ============================================================\n";
+        $content .= "//  NovaFlow Compiled Route Cache — " . date('Y-m-d H:i:s') . "\n";
+        $content .= "//  Auto-generated by `php cli.php route:cache`\n";
+        $content .= "//  Do not modify this file manually. Run `php cli.php route:clear`\n";
+        $content .= "// ============================================================\n\n";
+        $content .= "return " . var_export($this->routes, true) . ";\n";
+
+        return file_put_contents($cacheFile, $content, LOCK_EX) !== false;
+    }
+
+    /**
+     * Clear compiled route cache
+     */
+    public function clearRouteCache(?string $path = null): bool
+    {
+        $cacheFile = $path ?: $this->getCachePath();
+        if (file_exists($cacheFile)) {
+            return unlink($cacheFile);
+        }
+        return true;
+    }
+
+    /**
+     * Check if route cache file currently exists
+     */
+    public function isCached(?string $path = null): bool
+    {
+        $cacheFile = $path ?: $this->getCachePath();
+        return file_exists($cacheFile);
+    }
+
     /**
      * Resolve the current request.
      */
@@ -184,8 +407,14 @@ class Router
             if (str_starts_with($this->request->getPath(), '/api')) {
                 if (ob_get_length()) ob_clean();
                 header('Content-Type: application/json; charset=utf-8');
+                if (is_array($result) || is_object($result)) {
+                    echo json_encode($result, JSON_UNESCAPED_UNICODE);
+                    return;
+                }
             }
-            echo $result;
+            if (is_string($result) || is_numeric($result)) {
+                echo $result;
+            }
             return;
         }
 
@@ -218,9 +447,22 @@ class Router
     protected function executeController(string $controllerName, string $method, array $urlParams, bool $isAutoRoute = false): void
     {
         if (!class_exists($controllerName)) {
-            // If it's a namespaced controller under App\Controllers, we ensure it has the full path
-            if (strpos($controllerName, 'App\\Controllers\\') !== 0) {
-                $controllerName = 'App\\Controllers\\' . ltrim($controllerName, '\\');
+            $candidates = [
+                $controllerName,
+                'App\\Controllers\\' . ltrim($controllerName, '\\'),
+            ];
+
+            // Support Module controllers (e.g. "Sales\InvoiceController" => App\Modules\Sales\Controllers\InvoiceController)
+            if (strpos($controllerName, '\\') !== false) {
+                [$mod, $ctrl] = explode('\\', ltrim($controllerName, '\\'), 2);
+                $candidates[] = "App\\Modules\\{$mod}\\Controllers\\{$ctrl}";
+            }
+
+            foreach ($candidates as $candidate) {
+                if (class_exists($candidate)) {
+                    $controllerName = $candidate;
+                    break;
+                }
             }
         }
 
@@ -253,7 +495,7 @@ class Router
             return;
         }
 
-        // 2. Reflection for Method Injection
+        // 3. Reflection for Method Injection
         $reflection = new \ReflectionMethod($controller, $method);
         $parameters = $reflection->getParameters();
         $dependencies = [];
@@ -285,7 +527,7 @@ class Router
             }
         }
 
-        // 3. Call the method with injected dependencies + remaining URL params
+        // 4. Call the method with injected dependencies + remaining URL params
         $result = $reflection->invokeArgs($controller, array_merge($dependencies, $urlParams));
         
         if (is_string($result) || is_numeric($result)) {

@@ -18,7 +18,7 @@ class CSRFMiddleware implements Middleware
         // 2. Validate only for non-read methods
         $method = $request->method();
         if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
-            $token = $_POST['_csrf_token'] ?? $request->header('X-CSRF-TOKEN') ?? '';
+            $token = $_POST['_csrf_token'] ?? $_POST['_token'] ?? $request->header('X-CSRF-TOKEN') ?? '';
             
             if (!Security::validateCSRFToken($token)) {
                 if (Request::isAjax()) {

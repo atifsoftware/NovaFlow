@@ -13,50 +13,64 @@ $templateEngine = null;
 /**
  * টেমপ্লেট ইঞ্জিন ইনিশিয়ালাইজ করা
  */
-function initTemplateEngine()
-{
-    global $templateEngine;
-    
-    if ($templateEngine === null) {
-        $templatePath = __DIR__ . '/../views';
-        $cachePath = __DIR__ . '/../storage/framework/views';
+if (!function_exists('initTemplateEngine')) {
+    /**
+     * টেমপ্লেট ইঞ্জিন ইনিশিয়ালাইজ করা
+     */
+    function initTemplateEngine()
+    {
+        global $templateEngine;
         
-        $templateEngine = new TemplateEngine($templatePath, $cachePath);
+        if ($templateEngine === null) {
+            $templatePath = __DIR__ . '/../views';
+            $cachePath = __DIR__ . '/../storage/framework/views';
+            
+            $templateEngine = new TemplateEngine($templatePath, $cachePath);
+        }
+        
+        return $templateEngine;
     }
-    
-    return $templateEngine;
 }
 
-/**
- * ভিউ রেন্ডার করা
- * 
- * @param string $template টেমপ্লেট নাম (যেমন: 'home', 'admin/dashboard')
- * @param array $data ভিউতে পাস করার ডেটা
- * @return string রেন্ডারড HTML
- */
-function view($template, $data = [])
-{
-    $engine = initTemplateEngine();
-    return $engine->render($template, $data);
+if (!function_exists('template_view')) {
+    /**
+     * টেমপ্লেট ভিউ রেন্ডার করা
+     */
+    function template_view($template, $data = [])
+    {
+        $engine = initTemplateEngine();
+        return $engine->render($template, $data);
+    }
 }
 
-/**
- * ভিউ সরাসরি আউটপুট করা
- * 
- * @param string $template টেমপ্লেট নাম
- * @param array $data ভিউতে পাস করার ডেটা
- */
-function display_view($template, $data = [])
-{
-    $engine = initTemplateEngine();
-    $engine->display($template, $data);
+if (!function_exists('view')) {
+    /**
+     * ভিউ রেন্ডার করা
+     */
+    function view($template, $data = [])
+    {
+        return template_view($template, $data);
+    }
 }
 
-/**
- * ভিউ ক্যাশ ক্লিয়ার করা
- */
-function clear_view_cache()
-{
-    $engine = initTemplateEngine();
-    $engine->clearCache();
+if (!function_exists('display_view')) {
+    /**
+     * ভিউ সরাসরি আউটপুট করা
+     */
+    function display_view($template, $data = [])
+    {
+        $engine = initTemplateEngine();
+        $engine->display($template, $data);
+    }
+}
+
+if (!function_exists('clear_view_cache')) {
+    /**
+     * ভিউ ক্যাশ ক্লিয়ার করা
+     */
+    function clear_view_cache()
+    {
+        $engine = initTemplateEngine();
+        $engine->clearCache();
+    }
 }

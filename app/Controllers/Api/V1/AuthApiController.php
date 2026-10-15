@@ -52,4 +52,12 @@ class AuthApiController extends ApiController
             ]
         ], 'Login successful');
     }
+
+    /**
+     * Fallback for browser GET access to POST login route
+     */
+    public function loginFallback()
+    {
+        return $this->error('Method Not Allowed. Please use POST for Login. Visit /api/docs for more info.', 405);
+    }
 }

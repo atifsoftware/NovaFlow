@@ -24,6 +24,11 @@ class ImageHandler
             return ['success' => false, 'message' => 'Invalid file type. Only JPG, PNG, WebP allowed.'];
         }
         
+        $folder = preg_replace('/[^a-zA-Z0-9_\-]/', '', trim($folder));
+        if ($folder === '') {
+            $folder = 'general';
+        }
+
         $uploadDir = BASE_PATH . '/public/uploads/' . $folder . '/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
