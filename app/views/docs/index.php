@@ -297,9 +297,16 @@ $currentLang = current_lang();
         box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
     }
 
-    /* Language display toggle */
+    /* Language display toggle & Hind Siliguri Typography */
     .lang-en { display: <?= $currentLang === 'bn' ? 'none' : 'block' ?>; }
-    .lang-bn { display: <?= $currentLang === 'bn' ? 'block' : 'none' ?>; }
+    .lang-bn {
+        display: <?= $currentLang === 'bn' ? 'block' : 'none' ?>;
+        font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif !important;
+    }
+    .lang-bn h1, .lang-bn h2, .lang-bn h3, .lang-bn h4, .lang-bn h5, .lang-bn h6,
+    .lang-bn p, .lang-bn span, .lang-bn div, .lang-bn a, .lang-bn li, .lang-bn td, .lang-bn th {
+        font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif !important;
+    }
 </style>
 
 <div class="container py-5">
@@ -1208,12 +1215,14 @@ php vendor/bin/phpunit
             $('#btnBn').removeClass('inactive').addClass('active');
             $('#btnEn').removeClass('active').addClass('inactive');
             $('#docsSearch').attr('placeholder', 'টপিক খুঁজুন...');
+            $('body').addClass('lang-bn');
         } else {
             $('.lang-bn').hide();
             $('.lang-en').fadeIn(200);
             $('#btnEn').removeClass('inactive').addClass('active');
             $('#btnBn').removeClass('active').addClass('inactive');
             $('#docsSearch').attr('placeholder', 'Search docs...');
+            $('body').removeClass('lang-bn');
         }
     }
 

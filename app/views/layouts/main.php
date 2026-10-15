@@ -23,11 +23,21 @@
         }
 
         body {
-            font-family: <?= current_lang() === 'bn' ? "'Hind Siliguri', 'Plus Jakarta Sans', sans-serif" : "'Plus Jakarta Sans', sans-serif" ?>;
+            font-family: <?= current_lang() === 'bn' ? "'Hind Siliguri', 'Plus Jakarta Sans', sans-serif" : "'Plus Jakarta Sans', 'Hind Siliguri', sans-serif" ?>;
             background-color: #0b0f19;
             color: #f1f5f9;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
+        }
+
+        /* Pure Hind Siliguri for Bengali Text across the whole app */
+        [lang="bn"],
+        .lang-bn,
+        .font-bangla,
+        body.lang-bn,
+        body.lang-bn h1, body.lang-bn h2, body.lang-bn h3, body.lang-bn h4, body.lang-bn h5, body.lang-bn h6,
+        body.lang-bn p, body.lang-bn a, body.lang-bn span, body.lang-bn div, body.lang-bn button {
+            font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif !important;
         }
 
         /* Glassmorphism Navbar */
@@ -190,7 +200,7 @@
         }
     </style>
 </head>
-<body>
+<body class="<?= current_lang() === 'bn' ? 'lang-bn' : '' ?>">
 
     <!-- Top Sticky Glass Navbar -->
     <nav class="navbar navbar-expand-lg nf-navbar sticky-top py-3">
