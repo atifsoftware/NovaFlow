@@ -483,10 +483,13 @@ class Router
             }
         }
 
-        // Global Auth Guard (Skip for APIs)
-        if (!is_subclass_of($controllerName, ApiController::class) && 
-            $controllerName !== 'App\\Controllers\\AuthController' && 
-            method_exists($controller, 'checkAuth')) {
+        // Global Auth Guard (Skip for APIs, AuthController, and Module controllers which manage their own middleware)
+        $skipAutoAuth = is_subclass_of($controllerName, ApiController::class) ||
+                        $controllerName === 'App\\Controllers\\AuthController' ||
+                        str_starts_with($controllerName, 'App\\Modules\\') ||
+                        (property_exists($controller, 'requireAuth') && !$controller->requireAuth);
+
+        if (!$skipAutoAuth && method_exists($controller, 'checkAuth')) {
             $controller->checkAuth();
         }
 

@@ -9,6 +9,8 @@ $router->get('/', 'HomeController@index');
 // Authentication Routes
 $router->get('/login', 'AuthController@login');
 $router->post('/login', 'AuthController@postLogin');
+$router->get('/auth/login', 'AuthController@login');
+$router->post('/auth/login', 'AuthController@postLogin');
 
 $router->get('/register', 'AuthController@register');
 $router->post('/register', 'AuthController@postRegister');

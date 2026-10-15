@@ -40,6 +40,7 @@ use NovaFlow\Core\DatabaseInterface;
 use NovaFlow\Core\QueueWorker;
 use NovaFlow\Core\Queue;
 use NovaFlow\Core\Migrator;
+use NovaFlow\Core\Schedule;
 
 class CLI
 {
@@ -106,6 +107,8 @@ class CLI
             echo "14. " . $this->color("Run Database Seeders", 'magenta') . "\n";
             echo "15. " . $this->color("Generate Model Factory", 'green') . "\n";
             echo "16. " . $this->color("Interactive Tinker Shell (REPL)", 'cyan') . "\n";
+            echo "17. " . $this->color("Generate ERP Module (make:module)", 'green') . "\n";
+            echo "18. " . $this->color("Run Scheduled Tasks (schedule:run)", 'yellow') . "\n";
             echo "0. " . $this->color("Exit", 'red') . "\n";
             echo "\n";
 
@@ -159,6 +162,12 @@ class CLI
                     break;
                 case '16':
                     $this->startTinker();
+                    break;
+                case '17':
+                    $this->promptGenerateModule();
+                    break;
+                case '18':
+                    $this->runSchedule();
                     break;
                 case '0':
                     echo $this->color("\n✓ Goodbye From NovaFlow!\n\n", 'green');
@@ -504,12 +513,102 @@ class CLI
                 echo $this->color("✓ All cache (Data & Routes) cleared successfully!\n", 'green');
                 break;
 
+            case 'make:module':
+                $moduleName = $argv[2] ?? null;
+                if (!$moduleName) {
+                    echo $this->color("Usage: php cli.php make:module <ModuleName>\n", 'yellow');
+                    exit(1);
+                }
+                $this->generateModule($moduleName, false);
+                break;
+
+            case 'schedule:run':
+                $this->runSchedule(false);
+                break;
+
             default:
                 echo $this->color("Unknown command: {$cmd}\n", 'red');
                 echo "Available commands:\n";
-                echo "  tinker, migrate, db:seed, make:seeder, make:factory, make:migration, make:model, routes, route:cache, route:clear, health, queue:work, cache:clear\n";
+                echo "  tinker, migrate, db:seed, make:seeder, make:factory, make:migration, make:model, make:module, routes, route:cache, route:clear, health, queue:work, cache:clear, schedule:run\n";
                 exit(1);
         }
+    }
+
+    public function promptGenerateModule()
+    {
+        $name = $this->input("Enter ERP Module Name (e.g. HRM, Purchase, CRM)");
+        if ($name) {
+            $this->generateModule($name, true);
+        } else {
+            $this->pause();
+        }
+    }
+
+    public function generateModule(string $name, bool $pause = false)
+    {
+        $name = ucfirst(trim($name));
+        $lowerName = strtolower($name);
+        $moduleDir = BASE_PATH . '/app/Modules/' . $name;
+
+        if (is_dir($moduleDir)) {
+            echo $this->color("\n✗ Module '{$name}' already exists at app/Modules/{$name}!\n", 'red');
+            if ($pause) $this->pause();
+            return;
+        }
+
+        try {
+            mkdir($moduleDir . '/Controllers', 0755, true);
+            mkdir($moduleDir . '/Models', 0755, true);
+            mkdir($moduleDir . '/Views/' . $lowerName, 0755, true);
+
+            $controllerContent = "<?php\n\nnamespace App\Modules\\{$name}\Controllers;\n\nuse NovaFlow\Core\Controller;\n\nclass {$name}Controller extends Controller\n{\n    public function index(): void\n    {\n        \$this->view('{$name}::{$lowerName}.index', [\n            'title' => '{$name} Module Dashboard'\n        ], 'main');\n    }\n}\n";
+            file_put_contents($moduleDir . "/Controllers/{$name}Controller.php", $controllerContent);
+
+            $modelContent = "<?php\n\nnamespace App\Modules\\{$name}\Models;\n\nuse NovaFlow\Core\Model;\n\nclass {$name} extends Model\n{\n    protected static string \$table = '{$lowerName}s';\n    protected static array \$fillable = ['name', 'status', 'description'];\n}\n";
+            file_put_contents($moduleDir . "/Models/{$name}.php", $modelContent);
+
+            $viewContent = "<?php\n/**\n * {$name} ERP Module View\n */\n?>\n<div class=\"container py-4\">\n    <div class=\"d-flex justify-content-between align-items-center mb-4\">\n        <div>\n            <h2 class=\"fw-bold mb-1\"><i class=\"fas fa-cubes text-danger me-2\"></i> {$name} Module</h2>\n            <p class=\"text-muted mb-0\">ERP Module: <code>App\Modules\\{$name}</code></p>\n        </div>\n    </div>\n    <div class=\"card bg-dark border-secondary border-opacity-25 rounded-4 p-4 text-white\">\n        <h5 class=\"fw-bold mb-2\">{$name} Dashboard</h5>\n        <p class=\"text-secondary small mb-0\">Customize this view in <code>app/Modules/{$name}/Views/{$lowerName}/index.php</code>.</p>\n    </div>\n</div>\n";
+            file_put_contents($moduleDir . "/Views/{$lowerName}/index.php", $viewContent);
+
+            $routesContent = "<?php\n// ============================================================\n//  ERP Module — {$name} Routes\n// ============================================================\n\n\$router->module('{$name}', function(\$router) {\n    \$router->get('/', '{$name}\\{$name}Controller@index');\n    \$router->resource('{$lowerName}s', '{$name}\\{$name}Controller');\n});\n";
+            file_put_contents($moduleDir . "/routes.php", $routesContent);
+
+            echo $this->color("\n✓ ERP Module '{$name}' generated successfully!\n", 'green');
+            echo "  ├─ Controller: app/Modules/{$name}/Controllers/{$name}Controller.php\n";
+            echo "  ├─ Model:      app/Modules/{$name}/Models/{$name}.php\n";
+            echo "  ├─ View:       app/Modules/{$name}/Views/{$lowerName}/index.php\n";
+            echo "  └─ Routes:     app/Modules/{$name}/routes.php\n\n";
+            echo $this->color("Auto-registered prefix: /{$lowerName}\n", 'cyan');
+        } catch (\Exception $e) {
+            echo $this->color("\n✗ Failed to create module: " . $e->getMessage() . "\n", 'red');
+        }
+
+        if ($pause) $this->pause();
+    }
+
+    public function runSchedule(bool $pause = true)
+    {
+        echo $this->color("\nRunning NovaFlow Scheduled Tasks...\n", 'bold');
+        $scheduleFile = BASE_PATH . '/app/schedule.php';
+        if (file_exists($scheduleFile)) {
+            require_once $scheduleFile;
+        }
+
+        $results = Schedule::run();
+        if (empty($results)) {
+            echo $this->color("No scheduled tasks were due at this time.\n\n", 'yellow');
+        } else {
+            foreach ($results as $res) {
+                if ($res['status'] === 'success') {
+                    echo $this->color("✓ [{$res['duration_ms']}ms] {$res['name']}\n", 'green');
+                } else {
+                    echo $this->color("✗ [{$res['duration_ms']}ms] {$res['name']}: {$res['error']}\n", 'red');
+                }
+            }
+            echo "\n";
+        }
+
+        if ($pause) $this->pause();
     }
 
     public function viewRoutes(bool $pause = true)

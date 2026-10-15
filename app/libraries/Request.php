@@ -245,4 +245,53 @@ class Request
         }
         return $_SESSION['_old_input'][$key] ?? $default;
     }
+
+    /**
+     * Determine if the current request expects a JSON response
+     */
+    public static function wantsJson(): bool
+    {
+        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        return self::isAjax() 
+            || str_starts_with(self::getPath(), '/api') 
+            || str_contains($accept, '/json') 
+            || str_contains($accept, '+json');
+    }
+
+    /**
+     * Validate current request inputs against validation rules
+     */
+    public static function validate(array $rules, array $messages = [], array $labels = []): array
+    {
+        $data = self::all();
+        $validator = Validator::make($data, $rules, $messages, $labels);
+
+        if ($validator->fails()) {
+            $errors = $validator->getErrors();
+
+            if (self::wantsJson()) {
+                if (ob_get_length()) ob_clean();
+                http_response_code(422);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'The given data was invalid.',
+                    'errors' => $errors
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['_old_input'] = $_POST;
+            $_SESSION['_flash_errors'] = $errors;
+
+            $referer = $_SERVER['HTTP_REFERER'] ?? (defined('BASE_URL') ? BASE_URL : '/');
+            header('Location: ' . $referer);
+            exit;
+        }
+
+        return $validator->validated();
+    }
 }

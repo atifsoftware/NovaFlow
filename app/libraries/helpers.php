@@ -221,3 +221,31 @@ if (!function_exists('old')) {
     }
 }
 
+if (!function_exists('errors')) {
+    /**
+     * Get validation errors from session flash
+     */
+    function errors(?string $field = null): mixed {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $errors = $_SESSION['_flash_errors'] ?? [];
+        if ($field !== null) {
+            return $errors[$field][0] ?? null;
+        }
+        return $errors;
+    }
+}
+
+if (!function_exists('has_error')) {
+    /**
+     * Check if a specific input field has a validation error
+     */
+    function has_error(string $field): bool {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        return !empty($_SESSION['_flash_errors'][$field]);
+    }
+}
+

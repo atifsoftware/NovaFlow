@@ -132,7 +132,7 @@ abstract class Controller
             session_start();
         }
         if (!isset($_SESSION['user_id'])) {
-            $this->redirect('/auth/login');
+            $this->redirect('/login');
         }
     }
 
