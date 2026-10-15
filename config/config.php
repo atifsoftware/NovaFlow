@@ -17,7 +17,7 @@ if (!defined('APP_NAME')) {
 
 // App Version
 if (!defined('APP_VERSION')) {
-    define('APP_VERSION', '2.0.0');
+    define('APP_VERSION', '2.1.0');
 }
 
 // Environment (local, development, production)

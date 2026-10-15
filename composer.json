@@ -1,7 +1,7 @@
 {
     "name": "atifsoftware/novaflow",
     "description": "Ultra-fast, enterprise-grade PHP 8.2 MVC framework with Multi-DB Grammars, Transactions, S3 Storage, and Queue architecture",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "type": "project",
     "keywords": [
         "php",

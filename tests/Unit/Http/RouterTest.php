@@ -142,7 +142,7 @@ class RouterTest extends TestCase
         $router = new Router();
 
         $router->get('/api/status', function () {
-            return ['status' => 'healthy', 'version' => '2.0.0'];
+            return ['status' => 'healthy', 'version' => '2.1.0'];
         });
 
         $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -155,6 +155,6 @@ class RouterTest extends TestCase
         $data = json_decode($output, true);
         $this->assertIsArray($data);
         $this->assertEquals('healthy', $data['status']);
-        $this->assertEquals('2.0.0', $data['version']);
+        $this->assertEquals('2.1.0', $data['version']);
     }
 }
