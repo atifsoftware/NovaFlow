@@ -122,7 +122,123 @@ printf("3. QueryBuilder Complex SQL Compilation (MySQL Grammar):\n");
 printf("   • Average Compilation:    %0.4f ms (%s queries/sec)\n\n", $results['qb_compilation'], number_format(1 / $qbTime));
 
 // -------------------------------------------------------------
-// Benchmark 4: IoC Container Auto-Wiring & Reflection
+// Benchmark 4: Real Database CRUD Execution (Live In-Memory SQLite)
+// -------------------------------------------------------------
+$pdo = $mockDb->getPdo();
+$pdo->exec("CREATE TABLE benchmark_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    email TEXT,
+    role TEXT,
+    balance REAL,
+    status TEXT,
+    created_at TEXT
+)");
+
+$crudIterations = 5000;
+
+// 4a. INSERT
+$pdo->beginTransaction();
+$start = microtime(true);
+for ($i = 1; $i <= $crudIterations; $i++) {
+    (new QueryBuilder($mockDb))
+        ->table('benchmark_users')
+        ->insert([
+            'name'       => "User $i",
+            'email'      => "user$i@novaflow.test",
+            'role'       => 'customer',
+            'balance'    => 1500.50 + $i,
+            'status'     => 'active',
+            'created_at' => '2026-10-28 12:00:00'
+        ]);
+}
+$pdo->commit();
+$insertTime = (microtime(true) - $start) / $crudIterations;
+$results['db_insert'] = $insertTime * 1000;
+
+// 4b. SELECT (Read)
+$start = microtime(true);
+for ($i = 1; $i <= $crudIterations; $i++) {
+    $row = (new QueryBuilder($mockDb))
+        ->table('benchmark_users')
+        ->where('id', '=', $i)
+        ->first();
+}
+$selectTime = (microtime(true) - $start) / $crudIterations;
+$results['db_select'] = $selectTime * 1000;
+
+// 4c. UPDATE
+$pdo->beginTransaction();
+$start = microtime(true);
+for ($i = 1; $i <= $crudIterations; $i++) {
+    (new QueryBuilder($mockDb))
+        ->table('benchmark_users')
+        ->where('id', '=', $i)
+        ->update([
+            'balance' => 9999.99,
+            'status'  => 'verified'
+        ]);
+}
+$pdo->commit();
+$updateTime = (microtime(true) - $start) / $crudIterations;
+$results['db_update'] = $updateTime * 1000;
+
+// 4d. DELETE
+$pdo->beginTransaction();
+$start = microtime(true);
+for ($i = 1; $i <= $crudIterations; $i++) {
+    (new QueryBuilder($mockDb))
+        ->table('benchmark_users')
+        ->where('id', '=', $i)
+        ->delete();
+}
+$pdo->commit();
+$deleteTime = (microtime(true) - $start) / $crudIterations;
+$results['db_delete'] = $deleteTime * 1000;
+
+printf("4. Real Database CRUD Operations (Live In-Memory SQLite Execution):\n");
+printf("   • INSERT Execution:       %0.4f ms / row  (%s inserts/sec)\n", $results['db_insert'], number_format(1 / $insertTime));
+printf("   • SELECT (Fetch One):     %0.4f ms / query (%s reads/sec)\n", $results['db_select'], number_format(1 / $selectTime));
+printf("   • UPDATE Execution:       %0.4f ms / row  (%s updates/sec)\n", $results['db_update'], number_format(1 / $updateTime));
+printf("   • DELETE Execution:       %0.4f ms / row  (%s deletes/sec)\n\n", $results['db_delete'], number_format(1 / $deleteTime));
+
+// -------------------------------------------------------------
+// Benchmark 5: End-to-End API Dispatch & JSON Response Lifecycle
+// -------------------------------------------------------------
+$apiRouter = new Router();
+$apiRouter->get('/api/v1/bench-endpoint', function (Request $req, Response $res) {
+    return [
+        'success' => true,
+        'status'  => 'healthy',
+        'code'    => 200,
+        'data'    => [
+            'id'        => 101,
+            'service'   => 'NovaFlow ERP Core API',
+            'timestamp' => 1730116800
+        ]
+    ];
+});
+
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REQUEST_URI'] = '/api/v1/bench-endpoint';
+$_GET['url'] = '/api/v1/bench-endpoint';
+
+$apiIterations = 5000;
+$start = microtime(true);
+for ($i = 0; $i < $apiIterations; $i++) {
+    ob_start();
+    $apiRouter->resolve();
+    $output = ob_get_clean();
+}
+$apiTime = (microtime(true) - $start) / $apiIterations;
+$results['api_dispatch'] = $apiTime * 1000;
+
+printf("5. End-to-End HTTP API Dispatch & JSON Response Lifecycle:\n");
+printf("   • Full Roundtrip Time:    %0.4f ms / req  (%s API req/sec)\n", $results['api_dispatch'], number_format(1 / $apiTime));
+printf("   • Pipeline Included:      Global Middleware + Route Match + Controller Resolve + JSON Output\n\n");
+
+// -------------------------------------------------------------
+// Benchmark 6: IoC Container Auto-Wiring & Reflection
 // -------------------------------------------------------------
 class BenchServiceA { public function name() { return 'A'; } }
 class BenchServiceB {
@@ -142,16 +258,16 @@ for ($i = 0; $i < $containerIterations; $i++) {
 $containerTime = (microtime(true) - $start) / $containerIterations;
 $results['container_di'] = $containerTime * 1000;
 
-printf("4. IoC Container Recursive Auto-Wiring (Reflection):\n");
+printf("6. IoC Container Recursive Auto-Wiring (Reflection):\n");
 printf("   • Average Resolve Time:   %0.4f ms (%s resolutions/sec)\n\n", $results['container_di'], number_format(1 / $containerTime));
 
 // -------------------------------------------------------------
-// Benchmark 5: Memory Footprint
+// Benchmark 7: Memory Footprint
 // -------------------------------------------------------------
 $memoryBase = memory_get_usage(true) / 1024 / 1024;
 $memoryPeak = memory_get_peak_usage(true) / 1024 / 1024;
 
-printf("5. Memory Consumption (RAM Footprint):\n");
+printf("7. Memory Consumption (RAM Footprint):\n");
 printf("   • Base Memory Usage:      %0.2f MB\n", $memoryBase);
 printf("   • Peak Memory Usage:      %0.2f MB\n\n", $memoryPeak);
 
