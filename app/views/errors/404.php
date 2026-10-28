@@ -15,13 +15,15 @@ if ($is_admin_path && $is_logged_in) {
         <div class="display-1 fw-bold text-danger mb-4"><i class="fas fa-exclamation-triangle"></i> 404</div>
         <h2 class="fw-bold text-dark">পেজটি পাওয়া যায়নি!</h2>
         <p class="text-muted mb-4">দুঃখিত, আপনি যে ফাইল বা পেজটি খুঁজছেন তা আমাদের সিস্টেমে নেই।</p>
-        <a href="' . BASE_URL . '/admin/dashboard" class="btn btn-danger px-4 py-2 rounded-pill">
+        <a href="' . (defined('BASE_URL') ? BASE_URL : '/') . '/admin/dashboard" class="btn btn-danger px-4 py-2 rounded-pill">
             <i class="fas fa-home me-2"></i> ড্যাশবোর্ডে ফিরে যান
         </a>
     </div>';
     
     require_once VIEW_PATH . '/layouts/admin.php';
-    exit;
+    if (!defined('PHPUNIT_COMPOSER_INSTALL')) {
+        exit;
+    }
 }
 
 // Fallback for standard 404
@@ -47,7 +49,7 @@ if ($is_admin_path && $is_logged_in) {
     <div class="error-code">404</div>
     <h2 class="fw-bold mb-3">পেজটি পাওয়া যায়নি!</h2>
     <p class="text-muted mb-4">দুঃখিত, আপনি ভুল পথে চলে এসেছেন। অনুগ্রহ করে নীচের বাটনে ক্লিক করে মূল পাতায় ফিরে যান।</p>
-    <a href="<?= BASE_URL ?>/" class="btn btn-danger px-4 py-2 rounded-pill">হোম পেজে ফিরে যান</a>
+    <a href="<?= defined('BASE_URL') ? BASE_URL : '/' ?>/" class="btn btn-danger px-4 py-2 rounded-pill">হোম পেজে ফিরে যান</a>
 </div>
 
 </body>

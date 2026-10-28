@@ -14,9 +14,9 @@ class Dotenv
     /**
      * Load .env file
      */
-    public static function load($path = null)
+    public static function load($path = null, bool $force = false)
     {
-        if (self::$loaded) {
+        if (self::$loaded && !$force) {
             return;
         }
 
@@ -41,16 +41,37 @@ class Dotenv
                 $key = trim($key);
                 $value = trim($value);
 
+                // Strip unquoted inline comments
+                if (!str_starts_with($value, '"') && !str_starts_with($value, "'")) {
+                    if (strpos($value, ' #') !== false) {
+                        $value = trim(explode(' #', $value, 2)[0]);
+                    } elseif (strpos($value, ' //') !== false) {
+                        $value = trim(explode(' //', $value, 2)[0]);
+                    }
+                }
+
                 // Remove quotes
-                $value = trim($value, '"');
-                $value = trim($value, "'");
+                if ((str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+                    (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+                    $value = substr($value, 1, -1);
+                }
+
+                $lower = strtolower($value);
+                $parsedValue = match ($lower) {
+                    'true', '(true)' => true,
+                    'false', '(false)' => false,
+                    'null', '(null)' => null,
+                    'empty', '(empty)' => '',
+                    default => $value,
+                };
 
                 // Set environment variable
-                putenv("$key=$value");
-                $_ENV[$key] = $value;
-                $_SERVER[$key] = $value;
+                $stringVal = is_bool($parsedValue) ? ($parsedValue ? 'true' : 'false') : (string)$parsedValue;
+                putenv("$key=$stringVal");
+                $_ENV[$key] = $parsedValue;
+                $_SERVER[$key] = $parsedValue;
 
-                self::$variables[$key] = $value;
+                self::$variables[$key] = $parsedValue;
             }
         }
 
@@ -63,8 +84,31 @@ class Dotenv
             self::load();
         }
 
-        $val = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-        return ($val === false || $val === null) ? $default : $val;
+        if (array_key_exists($key, self::$variables)) {
+            return self::$variables[$key];
+        }
+
+        if (array_key_exists($key, $_ENV)) {
+            return $_ENV[$key];
+        }
+
+        if (array_key_exists($key, $_SERVER)) {
+            return $_SERVER[$key];
+        }
+
+        $val = getenv($key);
+        if ($val === false || $val === null) {
+            return $default;
+        }
+
+        $lower = strtolower((string)$val);
+        return match ($lower) {
+            'true', '(true)' => true,
+            'false', '(false)' => false,
+            'null', '(null)' => null,
+            'empty', '(empty)' => '',
+            default => $val,
+        };
     }
 
     /**

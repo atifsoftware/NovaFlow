@@ -30,6 +30,20 @@ class ScheduledTask
     }
 
     /**
+     * Set the timezone for the task
+     */
+    public function timezone(string $timezone): self
+    {
+        $this->timezone = $timezone;
+        return $this;
+    }
+
+    public function getTimezone(): ?string
+    {
+        return $this->timezone;
+    }
+
+    /**
      * Set a raw cron expression
      */
     public function cron(string $expression): self
@@ -142,7 +156,12 @@ class ScheduledTask
      */
     public function isDue(?\DateTimeInterface $date = null): bool
     {
-        $date = $date ?: new \DateTime();
+        if ($date === null) {
+            $tz = $this->timezone ? new \DateTimeZone($this->timezone) : null;
+            $date = new \DateTime('now', $tz);
+        } elseif ($this->timezone !== null) {
+            $date = \DateTime::createFromInterface($date)->setTimezone(new \DateTimeZone($this->timezone));
+        }
 
         $parts = preg_split('/\s+/', trim($this->expression));
         if (count($parts) !== 5) {

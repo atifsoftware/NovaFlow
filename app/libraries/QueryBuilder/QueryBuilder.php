@@ -32,6 +32,7 @@ class QueryBuilder
     private $having = '';
     private $ignoreSoftDelete = false;
     private $unions = [];
+    private $eagerLoads = [];
 
     // For WITH clauses (CTEs)
     private $withClauses = [];
@@ -44,7 +45,7 @@ class QueryBuilder
     public function __construct(DatabaseInterface $db, ?GrammarInterface $grammar = null)
     {
         $this->db = $db;
-        $this->grammar = $grammar ?? (method_exists($db, 'getGrammar') ? $db->getGrammar() : new MySqlGrammar());
+        $this->grammar = $grammar ?? ((method_exists($db, 'getGrammar') && $db->getGrammar()) ? $db->getGrammar() : new MySqlGrammar());
     }
 
     /**
@@ -635,6 +636,11 @@ class QueryBuilder
                     }
                     $objects[] = $obj;
                 }
+
+                if (!empty($this->eagerLoads) && !empty($objects)) {
+                    $this->eagerLoadRelations($objects);
+                }
+
                 return $objects;
             }
         }
@@ -924,13 +930,31 @@ class QueryBuilder
     
     public function orderBy($column, $direction = 'ASC'): self
     {
-        $direction = in_array(strtoupper(trim($direction)), ['ASC', 'DESC']) ? strtoupper(trim($direction)) : 'ASC';
+        if ($column instanceof RawExpression) {
+            $clause = (string)$column;
+            $this->orderBy = $this->orderBy ? "$this->orderBy, $clause" : $clause;
+            return $this;
+        }
+
+        $direction = in_array(strtoupper(trim((string)$direction)), ['ASC', 'DESC']) ? strtoupper(trim((string)$direction)) : 'ASC';
         $column = preg_replace('/[^a-zA-Z0-9_\.`"]/', '', trim((string)$column));
         if ($column === '') {
             return $this;
         }
         $clause = "$column $direction";
         $this->orderBy = $this->orderBy ? "$this->orderBy, $clause" : $clause;
+        return $this;
+    }
+
+    /**
+     * Add a raw ORDER BY clause
+     */
+    public function orderByRaw(string $sql): self
+    {
+        $sql = trim($sql);
+        if ($sql !== '') {
+            $this->orderBy = $this->orderBy ? "$this->orderBy, $sql" : $sql;
+        }
         return $this;
     }
 
@@ -944,5 +968,226 @@ class QueryBuilder
     {
         $this->offset = $offset;
         return $this;
+    }
+
+    /**
+     * Set the relationships that should be eager loaded.
+     */
+    public function with(...$relations): self
+    {
+        $flattened = [];
+        foreach ($relations as $relation) {
+            if (is_array($relation)) {
+                $flattened = array_merge($flattened, $relation);
+            } else {
+                $flattened[] = $relation;
+            }
+        }
+        $this->eagerLoads = array_unique(array_merge($this->eagerLoads, $flattened));
+        return $this;
+    }
+
+    /**
+     * Eager load relations on collection of models.
+     */
+    protected function eagerLoadRelations(array &$models): void
+    {
+        if (empty($models)) {
+            return;
+        }
+
+        foreach ($this->eagerLoads as $relationName) {
+            $first = $models[0];
+            if (!method_exists($first, $relationName)) {
+                continue;
+            }
+
+            $relationObj = $first->$relationName();
+
+            if ($relationObj instanceof \NovaFlow\Core\Relations\BelongsTo) {
+                $foreignKey = $relationObj->getForeignKey();
+                $ownerKey = $relationObj->getOwnerKey();
+                $relatedClass = $relationObj->getRelatedModel();
+
+                $fkValues = [];
+                foreach ($models as $m) {
+                    $val = $m->$foreignKey;
+                    if ($val !== null && $val !== '') {
+                        $fkValues[] = $val;
+                    }
+                }
+                $fkValues = array_values(array_unique($fkValues));
+
+                $relatedMap = [];
+                if (!empty($fkValues)) {
+                    $relatedList = $relatedClass::whereIn($ownerKey, $fkValues)->get();
+                    foreach ($relatedList as $rItem) {
+                        $relatedMap[$rItem->$ownerKey] = $rItem;
+                    }
+                }
+
+                foreach ($models as $m) {
+                    $val = $m->$foreignKey;
+                    $m->setRelation($relationName, $relatedMap[$val] ?? null);
+                }
+            } elseif ($relationObj instanceof \NovaFlow\Core\Relations\HasOne) {
+                $foreignKey = $relationObj->getForeignKey();
+                $localKey = $relationObj->getLocalKey();
+                $relatedClass = $relationObj->getRelatedModel();
+
+                $lkValues = [];
+                foreach ($models as $m) {
+                    $val = $m->$localKey;
+                    if ($val !== null && $val !== '') {
+                        $lkValues[] = $val;
+                    }
+                }
+                $lkValues = array_values(array_unique($lkValues));
+
+                $relatedMap = [];
+                if (!empty($lkValues)) {
+                    $relatedList = $relatedClass::whereIn($foreignKey, $lkValues)->get();
+                    foreach ($relatedList as $rItem) {
+                        $relatedMap[$rItem->$foreignKey] = $rItem;
+                    }
+                }
+
+                foreach ($models as $m) {
+                    $val = $m->$localKey;
+                    $m->setRelation($relationName, $relatedMap[$val] ?? null);
+                }
+            } elseif ($relationObj instanceof \NovaFlow\Core\Relations\HasMany) {
+                $foreignKey = $relationObj->getForeignKey();
+                $localKey = $relationObj->getLocalKey();
+                $relatedClass = $relationObj->getRelatedModel();
+
+                $lkValues = [];
+                foreach ($models as $m) {
+                    $val = $m->$localKey;
+                    if ($val !== null && $val !== '') {
+                        $lkValues[] = $val;
+                    }
+                }
+                $lkValues = array_values(array_unique($lkValues));
+
+                $relatedGroup = [];
+                if (!empty($lkValues)) {
+                    $relatedList = $relatedClass::whereIn($foreignKey, $lkValues)->get();
+                    foreach ($relatedList as $rItem) {
+                        $relatedGroup[$rItem->$foreignKey][] = $rItem;
+                    }
+                }
+
+                foreach ($models as $m) {
+                    $val = $m->$localKey;
+                    $m->setRelation($relationName, $relatedGroup[$val] ?? []);
+                }
+            }
+        }
+    }
+
+    /**
+     * Hydrate a single row into a model instance or stdClass.
+     */
+    protected function hydrateRow(array $row): mixed
+    {
+        if ($this->model) {
+            $class = is_string($this->model) ? $this->model : get_class($this->model);
+            $obj = new $class();
+            if (method_exists($obj, 'syncAttributes')) {
+                $obj->syncAttributes($row, true);
+            } else {
+                foreach ($row as $k => $v) { $obj->$k = $v; }
+            }
+            return $obj;
+        }
+        return (object) $row;
+    }
+
+    /**
+     * Set the limit and offset for a given page.
+     */
+    public function forPage(int $page, int $perPage = 15): self
+    {
+        return $this->offset(max(0, ($page - 1) * $perPage))->limit($perPage);
+    }
+
+    /**
+     * Chunk the results of the query page-by-page.
+     */
+    public function chunk(int $count, callable $callback): bool
+    {
+        $page = 1;
+
+        do {
+            $clone = clone $this;
+            $results = $clone->forPage($page, $count)->get();
+            $countResults = count($results);
+
+            if ($countResults === 0) {
+                break;
+            }
+
+            if ($callback($results, $page) === false) {
+                return false;
+            }
+
+            unset($results);
+            $page++;
+        } while ($countResults === $count);
+
+        return true;
+    }
+
+    /**
+     * Chunk the results of a query by comparing IDs (ideal for massive datasets).
+     */
+    public function chunkById(int $count, callable $callback, ?string $column = null): bool
+    {
+        $column = $column ?: ($this->model && method_exists($this->model, 'getPrimaryKey') ? $this->model->getPrimaryKey() : 'id');
+        $lastId = null;
+
+        do {
+            $clone = clone $this;
+            if ($lastId !== null) {
+                $clone->where($column, '>', $lastId);
+            }
+
+            $results = $clone->orderBy($column, 'ASC')->limit($count)->get();
+            $countResults = count($results);
+
+            if ($countResults === 0) {
+                break;
+            }
+
+            if ($callback($results) === false) {
+                return false;
+            }
+
+            $lastItem = end($results);
+            $lastId = is_object($lastItem) ? ($lastItem->$column ?? $lastItem->id ?? null) : ($lastItem[$column] ?? $lastItem['id'] ?? null);
+            unset($results);
+        } while ($countResults === $count);
+
+        return true;
+    }
+
+    /**
+     * Stream query results one by one using a PDO generator cursor.
+     * Keeps memory consumption at O(1) regardless of total rows.
+     */
+    public function cursor(): \Generator
+    {
+        $sql = $this->toSql();
+        $params = $this->getBindings();
+
+        $stmt = $this->db->query($sql, $params);
+
+        if ($stmt instanceof \PDOStatement) {
+            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                yield $this->hydrateRow($row);
+            }
+            $stmt->closeCursor();
+        }
     }
 }

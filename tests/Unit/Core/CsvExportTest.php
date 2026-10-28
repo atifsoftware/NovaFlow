@@ -41,4 +41,19 @@ class CsvExportTest extends TestCase
         $this->assertStringContainsString('Alice,Admin', $csv);
         $this->assertStringContainsString('Bob,Manager', $csv);
     }
+
+    public function testFormulaInjectionEscaping(): void
+    {
+        $headers = ['Command', 'Formula', 'Safe Negative Number'];
+        $rows = [
+            ['=cmd|"/c calc"!A0', '+@SUM(1,2)', '-500.00'],
+        ];
+
+        $csv = CsvExport::toString($headers, $rows);
+        // Formula triggers should be prefixed with single quote
+        $this->assertStringContainsString("'=cmd", $csv);
+        $this->assertStringContainsString("'+@SUM", $csv);
+        // Pure negative numeric values should remain unescaped numbers
+        $this->assertStringContainsString('-500.00', $csv);
+    }
 }

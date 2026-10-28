@@ -30,4 +30,19 @@ class HasOne
         $model = new ($this->relatedModel)();
         return $model::where($this->foreignKey, $this->parentData[$this->localKey])->first();
     }
+
+    public function getRelatedModel()
+    {
+        return $this->relatedModel;
+    }
+
+    public function getForeignKey()
+    {
+        return $this->foreignKey;
+    }
+
+    public function getLocalKey()
+    {
+        return $this->localKey;
+    }
 }

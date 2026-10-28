@@ -21,8 +21,8 @@ class AuthApiController extends ApiController
      */
     public function login()
     {
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
+        $email = trim((string)(Request::input('email') ?: Request::json('email', '')));
+        $password = (string)(Request::input('password') ?: Request::json('password', ''));
 
         if (empty($email) || empty($password)) {
             return $this->error('Email and Password are required', 422);
@@ -48,7 +48,7 @@ class AuthApiController extends ApiController
             'user'  => [
                 'id'    => $user->id,
                 'email' => $user->email,
-                'name'  => $user->full_name ?? $user->username
+                'name'  => $user->name ?? $user->full_name ?? $user->username ?? 'User'
             ]
         ], 'Login successful');
     }

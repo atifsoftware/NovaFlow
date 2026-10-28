@@ -49,8 +49,11 @@ abstract class Controller
 
     protected function redirect(string $path): void
     {
-        header('Location: ' . BASE_URL . '/' . ltrim($path, '/'));
-        exit;
+        $base = defined('BASE_URL') ? BASE_URL : '';
+        header('Location: ' . rtrim($base, '/') . '/' . ltrim($path, '/'));
+        if (!defined('PHPUNIT_COMPOSER_INSTALL')) {
+            exit;
+        }
     }
 
     protected function json(mixed $data, int $status = 200): void
@@ -160,18 +163,41 @@ abstract class Controller
     }
 
     /**
-     * Check if user has permission for a specific module
+     * Check if user has permission for a specific module or action (via Dynamic RBAC)
      */
     public function hasPermission(string $module): bool
     {
-        if ($this->isAdmin()) return true;
-        
-        $permissions = $_SESSION['permissions'] ?? [];
-        if (is_string($permissions)) {
-            $permissions = json_decode($permissions, true) ?: [];
+        return RBAC::hasPermission($this->getUserId(), $module);
+    }
+
+    /**
+     * Alias for hasPermission
+     */
+    public function can(string $permission): bool
+    {
+        return RBAC::can($permission, $this->getUserId());
+    }
+
+    /**
+     * Check if user has given role(s)
+     */
+    public function hasRole(string|array $roles): bool
+    {
+        return RBAC::hasRole($this->getUserId(), $roles);
+    }
+
+    /**
+     * Authorize user for a permission, or abort/redirect with flash message
+     */
+    protected function authorize(string $permission, string $message = 'আপনার এই পেজে প্রবেশের অনুমতি নেই।'): void
+    {
+        if (!$this->can($permission)) {
+            if (Request::wantsJson()) {
+                $this->json(['success' => false, 'message' => 'Forbidden: ' . $message], 403);
+            }
+            $this->setFlash('danger', $message);
+            $this->redirect('dashboard/index');
         }
-        
-        return isset($permissions[$module]) && $permissions[$module] == true;
     }
 
     /**
@@ -179,10 +205,7 @@ abstract class Controller
      */
     protected function checkPermission(string $module): void
     {
-        if (!$this->hasPermission($module)) {
-            $this->setFlash('danger', 'আপনার এই মডিউলটি ব্যবহার করার অনুমতি নেই।');
-            $this->redirect('dashboard/index');
-        }
+        $this->authorize($module, 'আপনার এই মডিউলটি ব্যবহার করার অনুমতি নেই।');
     }
 
     /**
@@ -190,23 +213,24 @@ abstract class Controller
      */
     protected function validate(array $rules, array $messages = []): Validator
     {
-        $data = array_merge($_GET, $_POST);
+        $data = Request::all();
         $validator = Validator::make($data, $rules, $messages);
         
         if ($validator->hasErrors()) {
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
-            $_SESSION['_old_input'] = $_POST;
-            $_SESSION['_errors'] = $validator->errors();
-
             $errors = $validator->errors();
+            $_SESSION['_old_input'] = $data;
+            $_SESSION['_errors'] = $errors;
+            $_SESSION['_flash_errors'] = $errors;
+
             $firstField = array_key_first($errors);
             $error = $validator->firstError($firstField);
             
             $this->setFlash('danger', $error);
             
-            $referer = $_SERVER['HTTP_REFERER'] ?? BASE_URL . '/dashboard/index';
+            $referer = Request::safeReferer(BASE_URL . '/dashboard/index');
             header('Location: ' . $referer);
             exit;
         }

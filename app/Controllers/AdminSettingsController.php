@@ -26,11 +26,22 @@ class AdminSettingsController extends Controller
 
     public function update(): void
     {
+        $allowedKeys = [
+            'site_name',
+            'site_tagline',
+            'contact_email',
+            'contact_phone',
+            'social_facebook',
+            'social_youtube'
+        ];
+
         $data = $this->allPost();
         
-        foreach ($data as $key => $value) {
-            if ($key === 'csrf_token') continue;
-            SettingModel::set($key, $value);
+        foreach ($allowedKeys as $key) {
+            if (array_key_exists($key, $data)) {
+                $val = trim((string)$data[$key]);
+                SettingModel::set($key, $val);
+            }
         }
 
         flash('success', 'সেটিংস সফলভাবে আপডেট হয়েছে।');

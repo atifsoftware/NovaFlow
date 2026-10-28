@@ -38,3 +38,15 @@ foreach ($providers as $providerClass) {
 // 4. Global Constants
 define('TIMEZONE', 'Asia/Dhaka');
 date_default_timezone_set(TIMEZONE);
+
+// 5. Global Security Helpers
+if (!function_exists('e')) {
+    /**
+     * Escape HTML entities in a string for safe output
+     */
+    function e(mixed $value, bool $doubleEncode = true): string
+    {
+        return \NovaFlow\Core\Security::escape($value, $doubleEncode);
+    }
+}
+

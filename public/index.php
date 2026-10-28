@@ -33,9 +33,44 @@ Autoloader::addNamespace('App\Modules', dirname(__DIR__) . '/app/Modules');
 require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/config/database.php';
 
-// 4. Conditional Register Error Handler (Only for Development/Local)
+// 4. Register Error Handler (Intelligent Debugger in Local/Dev, Secure Logger in Production)
 if (defined('APP_ENV') && (APP_ENV === 'development' || APP_ENV === 'local')) {
     \NovaFlow\Core\IntelligentErrorHandler::register();
+} else {
+    set_error_handler(function($severity, $message, $file, $line) {
+        if (!(error_reporting() & $severity)) return false;
+        error_log("[Production Error] $message in $file on line $line");
+        return true;
+    });
+
+    set_exception_handler(function(\Throwable $e) {
+        error_log("[Production Exception] " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+        if (ob_get_length()) ob_clean();
+
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $isApi = str_contains($uri, '/api/') || str_ends_with($uri, '/api') ||
+                 (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'));
+
+        if ($isApi) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'status'  => 'error',
+                'message' => 'Internal Server Error'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        http_response_code(500);
+        $errorView = dirname(__DIR__) . '/app/views/errors/500.php';
+        if (file_exists($errorView)) {
+            require $errorView;
+        } else {
+            echo '<!DOCTYPE html><html><head><title>500 Error</title></head><body><h1>500 Internal Server Error</h1></body></html>';
+        }
+        exit;
+    });
 }
 
 // 5. Bootstrap

@@ -353,8 +353,13 @@ class Router
             }
         }
 
-        // 2. If no explicit route, fallback to auto-routing
-        $this->dispatchAuto($path);
+        // 2. If no explicit route, fallback to auto-routing only if enabled
+        $autoRouting = function_exists('env') ? env('ENABLE_AUTO_ROUTING', false) : (getenv('ENABLE_AUTO_ROUTING') ?: false);
+        if (filter_var($autoRouting, FILTER_VALIDATE_BOOLEAN)) {
+            $this->dispatchAuto($path);
+        } else {
+            $this->notFound();
+        }
     }
 
     /**
@@ -428,15 +433,67 @@ class Router
     }
 
     /**
-     * Dispatch using the old auto-routing logic
+     * Dispatch using the auto-routing logic (when explicitly enabled)
      */
     protected function dispatchAuto(string $path): void
     {
         $segments = explode('/', trim($path, '/'));
 
-        $controllerName = ucfirst($segments[0] ?: 'dashboard') . 'Controller';
+        $rawBase = $segments[0] ?: 'dashboard';
+        $controllerName = str_ends_with(strtolower($rawBase), 'controller')
+            ? ucfirst($rawBase)
+            : ucfirst($rawBase) . 'Controller';
         $method = $segments[1] ?? 'index';
         $params = array_slice($segments, 2);
+
+        // Controller Blocklist: rejecting auto-routing access to sensitive controllers
+        $blocklist = [
+            'AuthController',
+            'AdminDashboardController',
+            'AdminSettingsController',
+            'AdminUserController',
+            'BackupController',
+            'SettingsController',
+            'UserController',
+            'RoleController',
+            'CustomerAdminController',
+            'CustomerAuthController'
+        ];
+
+        $blocklistLower = array_map('strtolower', $blocklist);
+        if (in_array(strtolower($controllerName), $blocklistLower, true) ||
+            in_array(strtolower($rawBase), $blocklistLower, true) ||
+            in_array(strtolower($rawBase . 'Controller'), $blocklistLower, true)) {
+            $this->notFound();
+            return;
+        }
+
+        // Enforce CSRF Check for Auto-Routed Mutations
+        $httpMethod = strtoupper($this->request->getMethod());
+        if (in_array($httpMethod, ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+            $token = $_POST['_csrf_token']
+                ?? $_POST['_token']
+                ?? Request::json('_token')
+                ?? Request::json('_csrf_token')
+                ?? $this->request->header('X-CSRF-TOKEN')
+                ?? $this->request->header('X-XSRF-TOKEN')
+                ?? '';
+
+            if (!Security::validateCSRFToken($token)) {
+                $this->response->setStatusCode(419);
+                if (Request::isAjax() || Request::wantsJson() || str_starts_with($path, '/api')) {
+                    if (ob_get_length()) ob_clean();
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['error' => 'CSRF token mismatch.', 'status' => 419], JSON_UNESCAPED_UNICODE);
+                } else {
+                    echo '419 Page Expired';
+                }
+                if (!defined('PHPUNIT_COMPOSER_INSTALL')) {
+                    exit;
+                }
+                return;
+            }
+        }
 
         $this->executeController($controllerName, $method, $params, true);
     }
@@ -535,6 +592,10 @@ class Router
         
         if (is_string($result) || is_numeric($result)) {
             echo $result;
+        } elseif (is_array($result) || is_object($result)) {
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result, JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -543,7 +604,7 @@ class Router
         return $this->routes;
     }
 
-    private function notFound(): void
+    public function notFound(): void
     {
         $this->response->setStatusCode(404);
         
@@ -552,15 +613,25 @@ class Router
             if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => 'API route not found.']);
-            exit;
+            if (!defined('PHPUNIT_COMPOSER_INSTALL')) {
+                exit;
+            }
+            return;
         }
 
-        $file = VIEW_PATH . '/errors/404.php';
+        if (!defined('BASE_URL')) {
+            define('BASE_URL', '/');
+        }
+
+        $file = defined('VIEW_PATH') ? VIEW_PATH . '/errors/404.php' : dirname(__DIR__) . '/views/errors/404.php';
         if (file_exists($file)) {
-            require_once $file;
+            require $file;
         } else {
             echo "404 Not Found";
         }
-        exit;
+
+        if (!defined('PHPUNIT_COMPOSER_INSTALL')) {
+            exit;
+        }
     }
 }

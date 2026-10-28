@@ -43,7 +43,7 @@ class CsvExport
             if (is_object($row)) {
                 $row = (array)$row;
             }
-            fputcsv($output, (array)$row);
+            fputcsv($output, self::sanitizeRow((array)$row));
         }
 
         fclose($output);
@@ -66,7 +66,7 @@ class CsvExport
             if (is_object($row)) {
                 $row = (array)$row;
             }
-            fputcsv($fp, (array)$row);
+            fputcsv($fp, self::sanitizeRow((array)$row));
         }
 
         rewind($fp);
@@ -74,5 +74,25 @@ class CsvExport
         fclose($fp);
 
         return $csv;
+    }
+
+    /**
+     * Escape cell values to prevent CSV / Spreadsheet Formula Injection (CWE-1236)
+     */
+    public static function sanitizeRow(array $row): array
+    {
+        $sanitized = [];
+        foreach ($row as $key => $value) {
+            if (is_string($value) && strlen($value) > 0) {
+                $firstChar = $value[0];
+                if (in_array($firstChar, ['=', '+', '-', '@', "\t", "\r"], true)) {
+                    if (!is_numeric($value)) {
+                        $value = "'" . $value;
+                    }
+                }
+            }
+            $sanitized[$key] = $value;
+        }
+        return $sanitized;
     }
 }

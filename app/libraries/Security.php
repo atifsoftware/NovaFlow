@@ -50,6 +50,14 @@ class Security
     }
 
     /**
+     * Escape HTML entities in a value for safe output
+     */
+    public static function escape(mixed $value, bool $doubleEncode = true): string
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
+    }
+
+    /**
      * Sanitize input data (HTML Escape)
      */
     public static function sanitize($data)
@@ -66,7 +74,7 @@ class Security
     }
 
     /**
-     * Clean input data (strip control characters ONLY)
+     * Clean input data (strip control characters ONLY while preserving \r, \n, \t)
      */
     public static function cleanInput(mixed $data): mixed
     {
@@ -75,10 +83,8 @@ class Security
         }
 
         if (is_string($data)) {
-            // Remove null bytes and other common control chars
-            $data = preg_replace('/\x00|\x0B|\x0C/', '', $data);
-            // WE REMOVED strip_tags() here to prevent data loss. 
-            // We MUST escape variables in the View using htmlspecialchars().
+            // Clean null bytes and non-printable control characters [\x00\x08\x0B\x0C\x0E-\x1F] while preserving valid whitespace (\r, \n, \t)
+            $data = preg_replace('/[\x00\x08\x0B\x0C\x0E-\x1F]/', '', $data);
             return trim($data);
         }
 

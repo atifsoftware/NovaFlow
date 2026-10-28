@@ -43,7 +43,7 @@ if (!function_exists('flash')) {
                 echo '<div class="' . $class . ' alert-dismissible fade show shadow-sm border-0 rounded-3 mb-3" role="alert" id="msg-flash">
                     <div class="d-flex align-items-center">
                         <i class="fas ' . ($type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle') . ' me-2"></i>
-                        <div>' . $msg . '</div>
+                        <div>' . htmlspecialchars((string)$msg, ENT_QUOTES, 'UTF-8') . '</div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>';
@@ -52,6 +52,16 @@ if (!function_exists('flash')) {
                 unset($_SESSION[$name . '_class']);
             }
         }
+    }
+}
+
+if (!function_exists('e')) {
+    /**
+     * Escape HTML entities in a string for safe output
+     */
+    function e(mixed $value, bool $doubleEncode = true): string
+    {
+        return \NovaFlow\Core\Security::escape($value, $doubleEncode);
     }
 }
 
@@ -246,6 +256,25 @@ if (!function_exists('has_error')) {
             session_start();
         }
         return !empty($_SESSION['_flash_errors'][$field]);
+    }
+}
+
+if (!function_exists('can')) {
+    /**
+     * Check if current user has permission
+     */
+    function can(string $permission): bool {
+        return \NovaFlow\Core\RBAC::can($permission);
+    }
+}
+
+if (!function_exists('has_role')) {
+    /**
+     * Check if current user has a role
+     */
+    function has_role(string|array $roles): bool {
+        $userId = $_SESSION['user_id'] ?? null;
+        return \NovaFlow\Core\RBAC::hasRole($userId, $roles);
     }
 }
 

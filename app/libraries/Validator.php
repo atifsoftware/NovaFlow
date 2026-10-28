@@ -111,7 +111,11 @@ class Validator
     {
         if (strpos($rule, ':') !== false) {
             list($ruleName, $paramString) = explode(':', $rule, 2);
-            $params = explode(',', $paramString);
+            if ($ruleName === 'regex') {
+                $params = [$paramString];
+            } else {
+                $params = explode(',', $paramString);
+            }
         } else {
             $ruleName = $rule;
             $params = [];
@@ -154,13 +158,19 @@ class Validator
                 return is_string($value);
 
             case 'date':
-                return strtotime($value) !== false;
+                if (!is_string($value) && !is_numeric($value)) return false;
+                $timestamp = strtotime((string)$value);
+                if ($timestamp === false) return false;
+                if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', (string)$value, $m)) {
+                    return checkdate((int)$m[2], (int)$m[3], (int)$m[1]);
+                }
+                return true;
 
             case 'url':
                 return filter_var($value, FILTER_VALIDATE_URL) !== false;
 
             case 'in':
-                return in_array($value, $params);
+                return in_array((string)$value, array_map('strval', $params), true);
 
             case 'unique':
                 return $this->isUnique($value, $params, $field);

@@ -3,7 +3,7 @@
 //  NovaFlow MVC — Admin Routes (Protected)
 // ============================================================
 
-$router->group(['prefix' => 'admin', 'middleware' => 'auth'], function($router) {
+$router->group(['prefix' => 'admin', 'middleware' => ['auth', 'csrf']], function($router) {
     
     // Dashboard
     $router->get('/dashboard', 'AdminDashboardController@index');

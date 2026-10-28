@@ -14,6 +14,18 @@ use InvalidArgumentException;
 abstract class Grammar implements GrammarInterface
 {
     /**
+     * All of the available clause operators.
+     */
+    protected array $operators = [
+        '=', '<', '>', '<=', '>=', '<>', '!=', '<=>',
+        'LIKE', 'LIKE BINARY', 'NOT LIKE', 'ILIKE',
+        '&', '|', '^', '<<', '>>',
+        'RLIKE', 'REGEXP', 'NOT REGEXP',
+        '~', '~*', '!~', '!~*', 'SIMILAR TO',
+        'NOT SIMILAR TO', 'NOT ILIKE', 'SOUNDS LIKE'
+    ];
+
+    /**
      * Component compilation sequence for SELECT statements
      */
     protected array $selectComponents = [
@@ -58,6 +70,30 @@ abstract class Grammar implements GrammarInterface
     public function wrapTable(string $table): string
     {
         return $this->wrap($table);
+    }
+
+    /**
+     * Validate and return an allowed SQL operator.
+     *
+     * @param string $operator
+     * @return string
+     * @throws InvalidArgumentException
+     */
+    public function validateOperator(string $operator): string
+    {
+        $normalized = strtoupper(trim($operator));
+        if (!in_array($normalized, $this->operators, true)) {
+            throw new InvalidArgumentException("Unsupported SQL operator: [{$operator}].");
+        }
+        return $normalized;
+    }
+
+    /**
+     * Get all allowed operators.
+     */
+    public function getOperators(): array
+    {
+        return $this->operators;
     }
 
     /**
@@ -200,12 +236,12 @@ abstract class Grammar implements GrammarInterface
             } elseif ($op === 'COLUMN') {
                 $wrappedCol = $this->wrap($col);
                 $wrappedVal = $this->wrap($val);
-                $sqlOp = $where['sql_operator'] ?? '=';
+                $sqlOp = $this->validateOperator($where['sql_operator'] ?? '=');
                 $sqlParts[] = "$prefix$wrappedCol $sqlOp $wrappedVal";
             } elseif ($op === 'DATE') {
-                $sqlParts[] = $this->compileWhereDate($prefix, $col, $where['sql_operator']);
+                $sqlParts[] = $this->compileWhereDate($prefix, $col, $this->validateOperator($where['sql_operator'] ?? '='));
             } elseif ($op === 'DATE_FUNC') {
-                $sqlParts[] = $this->compileWhereDateFunc($prefix, $col, $where['function'], $where['sql_operator']);
+                $sqlParts[] = $this->compileWhereDateFunc($prefix, $col, $where['function'], $this->validateOperator($where['sql_operator'] ?? '='));
             } elseif ($op === 'RAW') {
                 $sqlParts[] = "$prefix" . $where['sql'];
             } elseif ($op === 'JSON_CONTAINS') {
@@ -215,8 +251,9 @@ abstract class Grammar implements GrammarInterface
                 $sqlParts[] = "$prefix$wrappedCol $op";
             } else {
                 if ($col) {
+                    $validatedOp = $this->validateOperator($op);
                     $wrappedCol = $this->wrap($col);
-                    $sqlParts[] = "$prefix$wrappedCol $op ?";
+                    $sqlParts[] = "$prefix$wrappedCol $validatedOp ?";
                 }
             }
         }
@@ -239,6 +276,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function compileWhereDate(string $prefix, string $column, string $operator): string
     {
+        $operator = $this->validateOperator($operator);
         return $prefix . "DATE(" . $this->wrap($column) . ") $operator ?";
     }
 
@@ -247,6 +285,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function compileWhereDateFunc(string $prefix, string $column, string $function, string $operator): string
     {
+        $operator = $this->validateOperator($operator);
         return $prefix . "$function(" . $this->wrap($column) . ") $operator ?";
     }
 

@@ -13,8 +13,7 @@ class ApiAuthMiddleware implements Middleware
 {
     public function handle(Request $request, Response $response, array $args = []): bool
     {
-        $headers = getallheaders();
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        $auth = $request->header('Authorization') ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
 
         if (!str_starts_with($auth, 'Bearer ')) {
             http_response_code(401);

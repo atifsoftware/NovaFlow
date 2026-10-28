@@ -63,6 +63,64 @@ class AuthController extends Controller
     }
 
     /**
+     * Show registration form
+     */
+    public function register(): void
+    {
+        if ($this->isLoggedIn()) {
+            $this->redirect('/admin/dashboard');
+        }
+
+        $this->view('auth.register', [
+            'title' => 'নিবন্ধন — NovaFlow'
+        ], 'auth');
+    }
+
+    /**
+     * Handle user registration submission
+     */
+    public function postRegister(): void
+    {
+        $name = trim((string) $this->post('name'));
+        $email = trim((string) $this->post('email'));
+        $password = (string) $this->post('password');
+        $passwordConfirmation = (string) $this->post('password_confirmation');
+
+        if (empty($name) || empty($email) || empty($password)) {
+            flash('error', 'সবগুলো প্রয়োজনীয় তথ্য প্রদান করুন।');
+            $this->redirect('/register');
+        }
+
+        if ($password !== $passwordConfirmation) {
+            flash('error', 'পাসওয়ার্ড কনফার্মেশন মিলছে না।');
+            $this->redirect('/register');
+        }
+
+        if (strlen($password) < 8) {
+            flash('error', 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।');
+            $this->redirect('/register');
+        }
+
+        // Check if email already exists
+        $existing = UserModel::findByEmail($email);
+        if ($existing) {
+            flash('error', 'এই ইমেইলটি ইতিমধ্যেই নিবন্ধিত রয়েছে।');
+            $this->redirect('/register');
+        }
+
+        $user = new UserModel();
+        $user->name = $name;
+        $user->email = $email;
+        $user->password = \NovaFlow\Core\Security::hashPassword($password);
+        $user->role = 'user';
+        $user->status = 'active';
+        $user->save();
+
+        flash('success', 'নিবন্ধন সফল হয়েছে! অনুগ্রহ করে লগইন করুন।');
+        $this->redirect('/login');
+    }
+
+    /**
      * Handle logout
      */
     public function logout(): void

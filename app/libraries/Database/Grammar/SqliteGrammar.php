@@ -24,6 +24,7 @@ class SqliteGrammar extends Grammar
      */
     protected function compileWhereDate(string $prefix, string $column, string $operator): string
     {
+        $operator = $this->validateOperator($operator);
         return $prefix . "date(" . $this->wrap($column) . ") $operator ?";
     }
 
@@ -32,6 +33,7 @@ class SqliteGrammar extends Grammar
      */
     protected function compileWhereDateFunc(string $prefix, string $column, string $function, string $operator): string
     {
+        $operator = $this->validateOperator($operator);
         $formats = [
             'YEAR' => '%Y',
             'MONTH' => '%m',

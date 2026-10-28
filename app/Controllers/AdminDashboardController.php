@@ -30,7 +30,7 @@ class AdminDashboardController extends Controller
         return [
             'users' => DB::fetchValue("SELECT COUNT(*) FROM users"),
             'online' => 1,
-            'server' => $_SERVER['SERVER_SOFTWARE'],
+            'server' => $_SERVER['SERVER_SOFTWARE'] ?? 'PHP ' . PHP_VERSION . ' CLI/Server',
             'php_version' => PHP_VERSION
         ];
     }

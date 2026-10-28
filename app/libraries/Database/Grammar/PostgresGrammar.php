@@ -24,6 +24,7 @@ class PostgresGrammar extends Grammar
      */
     protected function compileWhereDate(string $prefix, string $column, string $operator): string
     {
+        $operator = $this->validateOperator($operator);
         return $prefix . $this->wrap($column) . "::date $operator ?";
     }
 
@@ -32,6 +33,7 @@ class PostgresGrammar extends Grammar
      */
     protected function compileWhereDateFunc(string $prefix, string $column, string $function, string $operator): string
     {
+        $operator = $this->validateOperator($operator);
         $func = strtoupper($function);
         return $prefix . "EXTRACT($func FROM " . $this->wrap($column) . ") $operator ?";
     }

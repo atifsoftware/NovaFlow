@@ -18,6 +18,7 @@ class Kernel
      */
     public static array $global = [
         LogRequestMiddleware::class,
+        SecurityHeadersMiddleware::class,
     ];
 
     /**
@@ -36,15 +37,17 @@ class Kernel
      * Short names for middleware classes
      */
     public static array $aliases = [
-        'auth'     => AuthMiddleware::class,
-        'guest'    => GuestMiddleware::class,
-        'admin'    => AdminMiddleware::class,
-        'api'      => ApiAuthMiddleware::class,
-        'role'     => RoleMiddleware::class,
-        'log'      => LogRequestMiddleware::class,
-        'cors'     => CorsMiddleware::class,
-        'throttle' => ThrottleRequestsMiddleware::class,
-        'csrf'     => \NovaFlow\Core\CSRFMiddleware::class,
+        'auth'             => AuthMiddleware::class,
+        'guest'            => GuestMiddleware::class,
+        'admin'            => AdminMiddleware::class,
+        'api'              => ApiAuthMiddleware::class,
+        'role'             => RoleMiddleware::class,
+        'permission'       => PermissionMiddleware::class,
+        'log'              => LogRequestMiddleware::class,
+        'cors'             => CorsMiddleware::class,
+        'throttle'         => ThrottleRequestsMiddleware::class,
+        'csrf'             => \NovaFlow\Core\CSRFMiddleware::class,
+        'security_headers' => SecurityHeadersMiddleware::class,
     ];
 
     /**

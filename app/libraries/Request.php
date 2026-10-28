@@ -142,18 +142,40 @@ class Request
     }
 
     /**
-     * Security Headers
+     * Get security response headers
      */
-    public static function setSecureHeaders()
+    public static function getSecureHeaders(): array
     {
-        header('X-Content-Type-Options: nosniff');
-        header('X-Frame-Options: SAMEORIGIN');
-        header('X-XSS-Protection: 1; mode=block');
-        header('Referrer-Policy: strict-origin-when-cross-origin');
+        $headers = [
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'X-XSS-Protection' => '1; mode=block',
+            'Referrer-Policy' => 'strict-origin-when-cross-origin',
+            'Permissions-Policy' => 'camera=(), microphone=(), geolocation=(self)',
+        ];
 
-        $isProduction = defined('APP_ENV') && APP_ENV === 'production';
-        if ($isProduction) {
-            header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+        $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+            || (defined('APP_ENV') && APP_ENV === 'production')
+            || (function_exists('env') && env('APP_ENV') === 'production')
+            || (getenv('APP_ENV') === 'production');
+
+        if ($isHttps) {
+            $headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload';
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Set security response headers
+     */
+    public static function setSecureHeaders(): void
+    {
+        if (!headers_sent()) {
+            foreach (self::getSecureHeaders() as $name => $value) {
+                header("{$name}: {$value}");
+            }
         }
     }
 
@@ -284,14 +306,44 @@ class Request
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
-            $_SESSION['_old_input'] = $_POST;
+            $_SESSION['_old_input'] = $data;
             $_SESSION['_flash_errors'] = $errors;
 
-            $referer = $_SERVER['HTTP_REFERER'] ?? (defined('BASE_URL') ? BASE_URL : '/');
+            $referer = self::safeReferer();
             header('Location: ' . $referer);
             exit;
         }
 
         return $validator->validated();
+    }
+
+    /**
+     * Get a safe redirect referer URL, preventing open redirect attacks
+     */
+    public static function safeReferer(?string $fallback = null): string
+    {
+        $defaultFallback = $fallback ?: (defined('BASE_URL') ? BASE_URL : '/');
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        if (empty($referer)) {
+            return $defaultFallback;
+        }
+
+        $refHost = parse_url($referer, PHP_URL_HOST);
+        $currHost = $_SERVER['HTTP_HOST'] ?? '';
+
+        // If relative URL (no scheme/host), it is internal and safe
+        if ($refHost === null) {
+            return $referer;
+        }
+
+        // Compare hostnames (strip port if present)
+        $refHostOnly = explode(':', $refHost)[0];
+        $currHostOnly = explode(':', $currHost)[0];
+
+        if (!empty($currHostOnly) && strtolower($refHostOnly) === strtolower($currHostOnly)) {
+            return $referer;
+        }
+
+        return $defaultFallback;
     }
 }

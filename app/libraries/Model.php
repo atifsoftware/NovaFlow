@@ -67,6 +67,27 @@ abstract class Model implements JsonSerializable
         return $this;
     }
 
+    public function setRelation(string $relation, mixed $value): self
+    {
+        $this->relations[$relation] = $value;
+        return $this;
+    }
+
+    public function getRelation(string $relation): mixed
+    {
+        return $this->relations[$relation] ?? null;
+    }
+
+    public function relationLoaded(string $relation): bool
+    {
+        return array_key_exists($relation, $this->relations);
+    }
+
+    public function getRelations(): array
+    {
+        return $this->relations;
+    }
+
     public function __get($key)
     {
         // Check attributes first
@@ -269,7 +290,19 @@ abstract class Model implements JsonSerializable
 
     public function toArray(): array
     {
-        $data = array_merge($this->attributes, $this->relations);
+        $data = $this->attributes;
+        
+        foreach ($this->relations as $relationName => $relationValue) {
+            if ($relationValue instanceof Model) {
+                $data[$relationName] = $relationValue->toArray();
+            } elseif (is_array($relationValue)) {
+                $data[$relationName] = array_map(function ($item) {
+                    return $item instanceof Model ? $item->toArray() : $item;
+                }, $relationValue);
+            } else {
+                $data[$relationName] = $relationValue;
+            }
+        }
         
         if (!empty($this->hidden)) {
             foreach ($this->hidden as $key) {

@@ -61,4 +61,16 @@ class ScheduleTest extends TestCase
         $this->assertEquals('Test Run Job', $results[0]['name']);
         $this->assertEquals('done', $results[0]['output']);
     }
+
+    public function testTaskTimezoneEvaluation(): void
+    {
+        // 14:00 in UTC is 20:00 in Asia/Dhaka (UTC+6)
+        $task = Schedule::call(fn() => 'dhaka')->dailyAt('20:00')->timezone('Asia/Dhaka');
+        
+        $utcTime = new \DateTime('2026-10-15 14:00:00', new \DateTimeZone('UTC'));
+        $this->assertTrue($task->isDue($utcTime));
+
+        $wrongUtcTime = new \DateTime('2026-10-15 20:00:00', new \DateTimeZone('UTC'));
+        $this->assertFalse($task->isDue($wrongUtcTime));
+    }
 }

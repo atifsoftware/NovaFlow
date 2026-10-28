@@ -47,4 +47,25 @@ class RequestValidationTest extends TestCase
         $this->assertEquals('admin@novaflow.test', $validated['email']);
         $this->assertEquals('250.50', $validated['amount']);
     }
+
+    public function testSafeRefererBlocksOpenRedirect(): void
+    {
+        $_SERVER['HTTP_HOST'] = 'localhost';
+
+        // Same host URL is allowed
+        $_SERVER['HTTP_REFERER'] = 'http://localhost/admin/users';
+        $this->assertEquals('http://localhost/admin/users', Request::safeReferer('/fallback'));
+
+        // Relative internal URL is allowed
+        $_SERVER['HTTP_REFERER'] = '/admin/dashboard';
+        $this->assertEquals('/admin/dashboard', Request::safeReferer('/fallback'));
+
+        // External malicious URL is blocked and returns fallback
+        $_SERVER['HTTP_REFERER'] = 'https://evil-phishing-site.com/steal';
+        $this->assertEquals('/fallback', Request::safeReferer('/fallback'));
+
+        // Empty referer returns fallback
+        unset($_SERVER['HTTP_REFERER']);
+        $this->assertEquals('/fallback', Request::safeReferer('/fallback'));
+    }
 }
