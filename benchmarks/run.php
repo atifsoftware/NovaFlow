@@ -11,6 +11,7 @@ use NovaFlow\Core\Request;
 use NovaFlow\Core\Response;
 use NovaFlow\Core\QueryBuilder\QueryBuilder;
 use NovaFlow\Core\Database\Drivers\SqliteConnection;
+use NovaFlow\Core\Database\Drivers\MySqlConnection;
 use NovaFlow\Core\Database\Grammar\MySqlGrammar;
 use NovaFlow\Core\DatabaseInterface;
 
@@ -122,45 +123,74 @@ printf("3. QueryBuilder Complex SQL Compilation (MySQL Grammar):\n");
 printf("   • Average Compilation:    %0.4f ms (%s queries/sec)\n\n", $results['qb_compilation'], number_format(1 / $qbTime));
 
 // -------------------------------------------------------------
-// Benchmark 4: Real Database CRUD Execution (Live In-Memory SQLite)
+// Benchmark 4: Real Database CRUD Operations (Live MySQL Server)
 // -------------------------------------------------------------
-$pdo = $mockDb->getPdo();
-$pdo->exec("CREATE TABLE benchmark_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    email TEXT,
-    role TEXT,
-    balance REAL,
-    status TEXT,
-    created_at TEXT
-)");
+try {
+    require_once BASE_PATH . '/config/database.php';
+    $liveDb = new MySqlConnection();
+    $livePdo = $liveDb->getPdo();
+    $serverVersion = $livePdo->getAttribute(PDO::ATTR_SERVER_VERSION);
+    $dbName = defined('DB_NAME') ? DB_NAME : 'novaflow_db';
+    $dbInfo = "MySQL (Database: $dbName, Server: v$serverVersion, Engine: InnoDB)";
+    $isMysql = true;
+} catch (\Throwable $e) {
+    $liveDb = $mockDb;
+    $livePdo = $mockDb->getPdo();
+    $dbInfo = "SQLite (In-Memory Fallback: " . $e->getMessage() . ")";
+    $isMysql = false;
+}
+
+$livePdo->exec("DROP TABLE IF EXISTS benchmark_perf_records");
+if ($isMysql) {
+    $livePdo->exec("CREATE TABLE benchmark_perf_records (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        balance DECIMAL(10,2) NOT NULL,
+        status VARCHAR(30) NOT NULL,
+        created_at DATETIME NOT NULL,
+        INDEX idx_status (status),
+        INDEX idx_email (email)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} else {
+    $livePdo->exec("CREATE TABLE benchmark_perf_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT,
+        role TEXT,
+        balance REAL,
+        status TEXT,
+        created_at TEXT
+    )");
+}
 
 $crudIterations = 5000;
 
 // 4a. INSERT
-$pdo->beginTransaction();
+$livePdo->beginTransaction();
 $start = microtime(true);
 for ($i = 1; $i <= $crudIterations; $i++) {
-    (new QueryBuilder($mockDb))
-        ->table('benchmark_users')
+    (new QueryBuilder($liveDb))
+        ->table('benchmark_perf_records')
         ->insert([
-            'name'       => "User $i",
-            'email'      => "user$i@novaflow.test",
+            'name'       => "Customer $i",
+            'email'      => "customer$i@novaflow.test",
             'role'       => 'customer',
             'balance'    => 1500.50 + $i,
             'status'     => 'active',
             'created_at' => '2026-10-28 12:00:00'
         ]);
 }
-$pdo->commit();
+$livePdo->commit();
 $insertTime = (microtime(true) - $start) / $crudIterations;
 $results['db_insert'] = $insertTime * 1000;
 
-// 4b. SELECT (Read)
+// 4b. SELECT (Primary Key / Indexed Read)
 $start = microtime(true);
 for ($i = 1; $i <= $crudIterations; $i++) {
-    $row = (new QueryBuilder($mockDb))
-        ->table('benchmark_users')
+    $row = (new QueryBuilder($liveDb))
+        ->table('benchmark_perf_records')
         ->where('id', '=', $i)
         ->first();
 }
@@ -168,35 +198,38 @@ $selectTime = (microtime(true) - $start) / $crudIterations;
 $results['db_select'] = $selectTime * 1000;
 
 // 4c. UPDATE
-$pdo->beginTransaction();
+$livePdo->beginTransaction();
 $start = microtime(true);
 for ($i = 1; $i <= $crudIterations; $i++) {
-    (new QueryBuilder($mockDb))
-        ->table('benchmark_users')
+    (new QueryBuilder($liveDb))
+        ->table('benchmark_perf_records')
         ->where('id', '=', $i)
         ->update([
             'balance' => 9999.99,
             'status'  => 'verified'
         ]);
 }
-$pdo->commit();
+$livePdo->commit();
 $updateTime = (microtime(true) - $start) / $crudIterations;
 $results['db_update'] = $updateTime * 1000;
 
 // 4d. DELETE
-$pdo->beginTransaction();
+$livePdo->beginTransaction();
 $start = microtime(true);
 for ($i = 1; $i <= $crudIterations; $i++) {
-    (new QueryBuilder($mockDb))
-        ->table('benchmark_users')
+    (new QueryBuilder($liveDb))
+        ->table('benchmark_perf_records')
         ->where('id', '=', $i)
         ->delete();
 }
-$pdo->commit();
+$livePdo->commit();
 $deleteTime = (microtime(true) - $start) / $crudIterations;
 $results['db_delete'] = $deleteTime * 1000;
 
-printf("4. Real Database CRUD Operations (Live In-Memory SQLite Execution):\n");
+// Clean up benchmark table
+$livePdo->exec("DROP TABLE IF EXISTS benchmark_perf_records");
+
+printf("4. Real Database CRUD Operations (Live %s):\n", $dbInfo);
 printf("   • INSERT Execution:       %0.4f ms / row  (%s inserts/sec)\n", $results['db_insert'], number_format(1 / $insertTime));
 printf("   • SELECT (Fetch One):     %0.4f ms / query (%s reads/sec)\n", $results['db_select'], number_format(1 / $selectTime));
 printf("   • UPDATE Execution:       %0.4f ms / row  (%s updates/sec)\n", $results['db_update'], number_format(1 / $updateTime));
