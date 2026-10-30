@@ -422,6 +422,9 @@ class CLI
         }
 
         switch ($cmd) {
+            case 'vite:clear':
+                $this->clearViteHot();
+                break;
             case 'tinker':
                 $this->startTinker();
                 break;
@@ -676,6 +679,17 @@ class CLI
         echo "\n" . $this->color("Press Enter to continue...", 'cyan');
         fgets(STDIN);
         $this->printHeader();
+    }
+
+    private function clearViteHot(): void
+    {
+        $hotFile = BASE_PATH . '/public/hot';
+        if (file_exists($hotFile)) {
+            @unlink($hotFile);
+            echo $this->color("✓ Stale Vite hot-file cleared successfully.\n", 'green');
+        } else {
+            echo $this->color("i No active public/hot file found.\n", 'cyan');
+        }
     }
 
     private function clearScreen()

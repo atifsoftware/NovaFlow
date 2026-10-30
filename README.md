@@ -525,7 +525,64 @@ Full Test Suite: 93 Unit & Feature Tests in < 0.70 seconds!
 - **ফর্ম রিকোয়েস্ট ভ্যালিডেশন:** ডেডিকেটেড `FormRequest` দিয়ে ডেটা ভ্যালিডেশন ও অথোরাইজেশন।
 - **ডাটাবেজ সিডার ও ফ্যাক্টরি:** টেস্ট ও ইনিশিয়াল ডেটা তৈরির জন্য Seeder ও Factory সিস্টেম।
 - **ইন্টারেক্টিভ টিংকার শেল (REPL):** `php cli.php tinker` দিয়ে টার্মিনাল থেকেই সরাসরি ফ্রেমওয়ার্ক ও ডেটাবেজ কোড টেস্ট করুন।
-- **৯৩টি অটোমেটেড ইউনিট টেস্ট:** ১০০% টেস্ট কভারেজ যা মাত্র ০.৭ সেকেন্ডে সম্পন্ন হয়।
+- **Inertia.js + React 19 / Vue ইন্টিগ্রেশন:** কোনো REST API বা Node.js ব্যাকএন্ড সার্ভার ছাড়াই PHP কন্ট্রোলার থেকে সরাসরি রিঅ্যাক্ট কম্পোনেন্টে ডেটা পুশ করুন।
+- **Vite 6 ও Tailwind CSS ইন্টিগ্রেশন:** ইনস্ট্যান্ট HMR Dev মোড ও অটোমেটিক হ্যাশড প্রোডাকশন বান্ডলিং।
+- **২৭০টি অটোমেটেড ইউনিট টেস্ট:** ৯৯৩টি অ্যাসারশন সহ ১০০% টেস্ট কভারেজ।
+
+## ⚛️ Inertia.js + React 19 Frontend (Full SPA without REST API)
+
+NovaFlow natively integrates the **Inertia.js Protocol v1/v2** and **Vite 6** with zero REST API overhead:
+
+### ১. PHP Controller
+```php
+namespace App\Controllers;
+
+use NovaFlow\Core\Controller;
+
+class ProductController extends Controller
+{
+    public function index(): void
+    {
+        $products = Product::where('status', 'active')->get();
+        
+        $this->inertia('Products/Index', [
+            'products' => $products,
+            'title'    => 'Our Products'
+        ]);
+    }
+}
+```
+
+### ২. React Component (`resources/js/Pages/Products/Index.jsx`)
+```jsx
+import React from 'react';
+import { Link } from '@inertiajs/react';
+
+export default function Index({ products, title }) {
+    return (
+        <div className="p-8">
+            <h1 className="text-2xl font-bold">{title}</h1>
+            <div className="grid grid-cols-3 gap-4 mt-6">
+                {products.map(p => (
+                    <div key={p.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                        <h3>{p.name}</h3>
+                        <p>${p.price}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+```
+
+### ৩. Frontend Commands
+```bash
+# Development with Live Hot-Module-Replacement (HMR)
+npm run dev
+
+# Production Build (Bundles Tailwind v4 + React + Assets into public/build with manifest hashing)
+npm run build
+```
 
 ## 📂 Folder Structure (ফোল্ডার আর্কিটেকচার)
 ```

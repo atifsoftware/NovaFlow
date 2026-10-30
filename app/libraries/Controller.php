@@ -47,6 +47,22 @@ abstract class Controller
         echo $viewService->render($view, $data, $layout);
     }
 
+    /**
+     * Render an Inertia.js component with props
+     */
+    protected function inertia(string $component, array $props = []): void
+    {
+        Inertia::render($component, $props);
+    }
+
+    /**
+     * Perform an external or full page redirect under the Inertia protocol
+     */
+    protected function inertiaLocation(string $url): void
+    {
+        Inertia::location($url);
+    }
+
     protected function redirect(string $path): void
     {
         $base = defined('BASE_URL') ? BASE_URL : '';

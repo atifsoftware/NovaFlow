@@ -6,6 +6,9 @@
 // Home Route
 $router->get('/', 'HomeController@index');
 
+// Inertia.js Demo Route
+$router->get('/inertia', 'HomeController@inertiaDemo');
+
 // Authentication Routes
 $router->get('/login', 'AuthController@login');
 $router->post('/login', 'AuthController@postLogin')->middleware(['csrf', 'throttle:10,1']);

@@ -278,3 +278,30 @@ if (!function_exists('has_role')) {
     }
 }
 
+
+
+if (!function_exists('inertia')) {
+    /**
+     * Helper to render Inertia components or share data
+     */
+    function inertia(?string $component = null, array $props = []): void
+    {
+        if ($component === null) {
+            if (!empty($props)) {
+                \NovaFlow\Core\Inertia::share($props);
+            }
+            return;
+        }
+        \NovaFlow\Core\Inertia::render($component, $props);
+    }
+}
+
+if (!function_exists('vite')) {
+    /**
+     * Helper to output Vite HTML tags for dev HMR or production manifest
+     */
+    function vite(string $entry = 'resources/js/app.jsx'): string
+    {
+        return \NovaFlow\Core\Vite::tags($entry);
+    }
+}

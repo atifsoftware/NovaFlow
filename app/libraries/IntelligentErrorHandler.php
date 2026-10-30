@@ -44,6 +44,12 @@ class IntelligentErrorHandler
 
     public static function handleError($errno, $errstr, $errfile, $errline)
     {
+        // Respect error_reporting() so `@`-suppressed calls and muted
+        // severities never render the debug view or leak into the response.
+        if (!(error_reporting() & $errno)) {
+            return true;
+        }
+
         $error = [
             'type' => self::getErrorType($errno),
             'message' => $errstr,
