@@ -1,0 +1,8 @@
+{
+  "name": "NovaFlow PHP",
+  "description": "Enterprise-grade PHP MVC framework featuring Multi-Database Grammars, Fluent QueryBuilder, Active Record ORM, Admin Dashboard, and Inertia.js React SPA.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

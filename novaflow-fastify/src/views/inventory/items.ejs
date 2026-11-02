@@ -1,0 +1,34 @@
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+      <span style="font-size: 0.75rem; font-family: monospace; color: #10b981; text-transform: uppercase;">Module: Inventory (HMVC)</span>
+      <h2 style="font-size: 1.5rem; font-weight: 700; color: #ffffff;">Stock Items & Warehouse</h2>
+      <p style="color: #94a3b8; font-size: 0.85rem;">Managed by <code>ItemController@index</code> inside <code>src/modules/inventory/</code></p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Product Name</th>
+        <th>Available Stock</th>
+        <th>Unit Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% items.forEach(function(item) { %>
+        <tr>
+          <td style="font-family: monospace; font-weight: 600; color: #38bdf8;"><%= item.sku %></td>
+          <td style="font-weight: 600; color: #ffffff;"><%= item.name %></td>
+          <td>
+            <span class="badge badge-success">
+              <%= item.stock %> in stock
+            </span>
+          </td>
+          <td style="font-family: monospace; font-weight: 700; color: #f59e0b;">$<%= item.price.toFixed(2) %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>

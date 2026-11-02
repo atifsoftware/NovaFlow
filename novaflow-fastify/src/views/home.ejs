@@ -1,0 +1,36 @@
+<div class="card" style="text-align: center; padding: 48px 24px; background: radial-gradient(circle at 50% 0%, rgba(239, 68, 68, 0.15), transparent 70%);">
+  <span style="display: inline-block; padding: 4px 14px; border-radius: 9999px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-bottom: 16px;">
+    ⚡ Model-View-Controller & HMVC Architecture
+  </span>
+  <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 12px; color: #ffffff;">
+    <%= heading %>
+  </h1>
+  <p style="color: #94a3b8; max-width: 650px; margin: 0 auto 24px; font-size: 1rem;">
+    <%= message %>
+  </p>
+  <div style="display: flex; justify-content: center; gap: 12px;">
+    <a href="/mvc/users" class="btn">View Users Controller</a>
+    <a href="/sales/invoices" class="btn" style="background: #0284c7;">Explore Sales Module (HMVC)</a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+  <div class="card">
+    <h3 style="color: #ef4444; margin-bottom: 8px;">1. Controllers (C)</h3>
+    <p style="color: #94a3b8; font-size: 0.85rem;">
+      Extends <code>BaseController</code> with built-in <code>this.view(reply, 'view_name', data)</code> and <code>this.json()</code> methods.
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="color: #38bdf8; margin-bottom: 8px;">2. Views Engine (V)</h3>
+    <p style="color: #94a3b8; font-size: 0.85rem;">
+      High-speed EJS template rendering with layout support via <code>@fastify/view</code>.
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="color: #10b981; margin-bottom: 8px;">3. Modules (HMVC)</h3>
+    <p style="color: #94a3b8; font-size: 0.85rem;">
+      Modular package structure (Sales, Inventory, HRM, Accounts) with self-contained routes, controllers, models, and views!
+    </p>
+  </div>
+</div>

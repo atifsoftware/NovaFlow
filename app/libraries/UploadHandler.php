@@ -32,11 +32,10 @@ class UploadHandler
             'image/gif',
             'image/webp',
             'application/pdf',
-            'text/csv',
-            'application/zip'
+            'text/csv'
         ];
 
-        $this->allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'csv', 'zip'];
+        $this->allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'csv'];
     }
 
     /**

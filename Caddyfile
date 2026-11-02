@@ -1,0 +1,26 @@
+{
+    frankenphp {
+        num_threads 8
+        worker {
+            file /app/worker.php
+            num 4
+            env APP_ENV production
+        }
+    }
+    order php_server before file_server
+}
+
+:3000 {
+    root * /app/public
+    encode zstd gzip
+
+    # Block direct PHP execution inside upload directories
+    @blocked {
+        path /uploads/*.php
+        path /uploads/*.phtml
+        path */.*
+    }
+    respond @blocked 403
+
+    php_server
+}

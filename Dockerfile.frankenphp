@@ -1,0 +1,25 @@
+# High-Performance Go-powered FrankenPHP Container for NovaFlow
+FROM dunglas/frankenphp:latest-php8.2-alpine
+
+# Install PDO drivers and extensions
+RUN install-php-extensions \
+    pdo_mysql \
+    pdo_pgsql \
+    pdo_sqlite \
+    opcache \
+    zip \
+    pcntl
+
+# Copy application files
+COPY . /app
+
+# Set environment
+ENV APP_ENV=production
+ENV FRANKENPHP_CONFIG="worker /app/worker.php 4"
+
+# Set permissions
+RUN chown -R www-data:www-data /app/storage /app/public/uploads
+
+EXPOSE 3000
+
+CMD ["frankenphp", "run", "--config", "/app/Caddyfile"]

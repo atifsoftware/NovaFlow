@@ -1,0 +1,20 @@
+{
+  "name": "novaflow-fastify",
+  "version": "2.1.0",
+  "description": "Ultra-fast NovaFlow PHP MVC port rewritten in Fastify & TypeScript with Multi-DB Grammar, Fluent QueryBuilder, and JWT Auth.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@fastify/jwt": "^9.0.4",
+    "fastify": "^5.2.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

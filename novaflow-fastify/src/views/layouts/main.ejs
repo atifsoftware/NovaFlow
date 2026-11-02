@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
+      background-color: #0b0f19;
+      color: #f1f5f9;
+      line-height: 1.6;
+    }
+    header {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 1.25rem;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, #ef4444, #f97316);
+      color: #ffffff;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+    }
+    nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    nav a:hover, nav a.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    main {
+      padding: 40px 0;
+      min-height: calc(100vh - 160px);
+    }
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 24px 0;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ef4444;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-size: 0.85rem; }
+    th { color: #94a3b8; font-family: 'Fira Code', monospace; font-size: 0.75rem; text-transform: uppercase; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="nav-inner">
+        <a href="/" class="brand">
+          <div class="brand-badge">N</div>
+          <span>NovaFlow <small style="color: #ef4444; font-size: 0.8rem;">Fastify MVC</small></span>
+        </a>
+        <nav>
+          <a href="/">Home (View)</a>
+          <a href="/mvc/users">Users (Controller)</a>
+          <a href="/sales/invoices">Sales Module (HMVC)</a>
+          <a href="/inventory/items">Inventory Module (HMVC)</a>
+          <a href="/health">Health API</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <%- body %>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      NovaFlow Fastify MVC Edition &bull; <%= currentYear %> &bull; High-Performance HMVC Architecture
+    </div>
+  </footer>
+</body>
+</html>

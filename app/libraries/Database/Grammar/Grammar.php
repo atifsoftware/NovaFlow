@@ -53,6 +53,10 @@ abstract class Grammar implements GrammarInterface
 
         // Do not wrap expressions containing functions or parentheses or wildcards
         if (strpos($value, '(') !== false || strpos($value, ')') !== false || $value === '*') {
+            // Guard against SQL injection attempts inside raw unquoted expressions
+            if (preg_match('/[;\n\r]|--|\/\*|\*\/|#/', $value)) {
+                throw new InvalidArgumentException("Potential SQL injection detected in identifier expression: {$value}");
+            }
             return $value;
         }
 

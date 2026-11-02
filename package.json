@@ -4,11 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build"
   },
   "dependencies": {
+    "@fastify/cors": "^11.4.0",
+    "@fastify/jwt": "^10.2.6",
+    "@fastify/view": "^12.0.1",
     "@inertiajs/react": "^2.0.3",
+    "ejs": "^7.0.2",
+    "fastify": "^5.12.8",
+    "lucide-react": "^1.66.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

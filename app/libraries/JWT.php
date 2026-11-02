@@ -21,7 +21,18 @@ class JWT
                 if (defined('APP_ENV') && APP_ENV === 'production') {
                     throw new \RuntimeException("JWT_SECRET or APP_KEY must be configured in production environment.");
                 }
-                $secret = 'novaflow_default_development_secret_key_change_in_production';
+                // Auto-generate a secure random 256-bit runtime key rather than using a static guessable string
+                if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+                    @session_start();
+                }
+                if (isset($_SESSION['_novaflow_runtime_jwt_key'])) {
+                    $secret = $_SESSION['_novaflow_runtime_jwt_key'];
+                } else {
+                    $secret = bin2hex(random_bytes(32));
+                    if (isset($_SESSION)) {
+                        $_SESSION['_novaflow_runtime_jwt_key'] = $secret;
+                    }
+                }
             }
             self::$secret = $secret;
         }

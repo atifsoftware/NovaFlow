@@ -420,8 +420,12 @@ class QueryBuilder
                 }
                 public function where($column, $operator, $value)
                 {
-                    $val = is_numeric($value) ? $value : "'" . addslashes($value) . "'";
-                    $this->clauses[] = "$column $operator $val";
+                    if (is_int($value) || is_float($value)) {
+                        $safeVal = $value;
+                    } else {
+                        $safeVal = "'" . str_replace(["\\", "'"], ["\\\\", "''"], (string)$value) . "'";
+                    }
+                    $this->clauses[] = "$column $operator $safeVal";
                     return $this;
                 }
             };
@@ -471,7 +475,11 @@ class QueryBuilder
         $validOperators = ['=', '>', '<', '>=', '<=', '<>', '!=', 'LIKE', 'NOT LIKE'];
         $operator = in_array(strtoupper(trim($operator)), $validOperators) ? strtoupper(trim($operator)) : '=';
         $wrappedCol = $this->escapeIdentifier($column);
-        $escapedValue = is_numeric($value) ? $value : "'" . addcslashes((string)$value, "\000\n\r\\'\"\032") . "'";
+        if (is_int($value) || is_float($value)) {
+            $escapedValue = $value;
+        } else {
+            $escapedValue = "'" . str_replace(["\\", "'"], ["\\\\", "''"], (string)$value) . "'";
+        }
 
         $condition = "$wrappedCol $operator $escapedValue";
         if ($this->having) {
